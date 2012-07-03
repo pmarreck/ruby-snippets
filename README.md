@@ -1,4 +1,4 @@
 ruby-snippets
 =============
 
-Just some ideas or playing around in ruby that might one day be promoted to their own projects.
+Just some ideas or me playing around in ruby that might one day be promoted to their own projects.

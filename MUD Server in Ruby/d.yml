@@ -1,0 +1,39 @@
+--- 
+- !ruby/object:O 
+  e: 
+    east: 5
+    north: 4
+  i: 1
+  l: 1
+  n: Peter
+  s: 
+  t: :p
+- !ruby/object:O 
+  e: {}
+
+  i: 2
+  l: 1
+  n: macplus
+  t: :o
+- !ruby/object:O 
+  e: {}
+
+  i: 3
+  l: 1
+  n: Jackie
+  s: 
+  t: :p
+- !ruby/object:O 
+  e: 
+    south: 1
+  i: 4
+  l: 
+  n: dungeon
+  t: :r
+- !ruby/object:O 
+  e: 
+    west: 1
+  i: 5
+  l: 
+  n: seashore
+  t: :r

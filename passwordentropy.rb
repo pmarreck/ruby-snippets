@@ -4,7 +4,50 @@ class Array
   end
 end
 
-module Password
+class Point
+  def initialize(*a)
+    array = a.flatten
+    raise "Too many numbers" if array.length > 2
+    @array = []
+    self.x = array[0]
+    self.y = array[1]
+  end
+  def to_a
+    @array
+  end
+
+  def x; @array[0]; end
+  def y; @array[1]; end
+  def x=(v); @array[0]=v; end
+  def y=(v); @array[1]=v; end
+
+  def [](i)
+    case i
+    when 0
+      self.x
+    when 1
+      self.y
+    else
+      nil
+    end
+  end
+  def []=(i,v)
+    case i
+    when 0
+      self.x = v
+    when 1
+      self.y = v
+    else
+      raise IndexError
+    end
+  end
+  def distance(other)
+    o = other.is_a?(Point) ? other : Point.new(other)
+    Math.hypot(o.x-self.x, o.y-self.y)
+  end
+end
+
+module PasswordEvaluator
   # Note: This way to pull in an english dictionary ONLY works on *nix/OS X machines!
   Dictionary = ["leet","haxor"] + (File.readlines("/usr/share/dict/words") + File.readlines("/usr/share/dict/web2a")).map {|w| w.downcase.chomp }
   Hexlower = ("a".."f").to_a
@@ -84,18 +127,80 @@ module Password
     end
     Regexp.new('^' << regex_array.join('|') << '$')
   end
+
+  QWERTY = [
+    '`1234567890-=',
+    'qwertyuiop[]\\',
+    "asdfghjkl;'",
+    'zxcvbnm,./'
+  ]
+  QWERTY_SHIFT = [
+    '`~!@#$%^&*()_+',
+    'QWERTYUIOP{}|',
+    "ASDFGHJKL:\"",
+    'ZXCVBNM<>?'
+  ]
+  ALPHABET = ["abcdefghijklmnopqrstuvwxyz"]
+
+  def keyboard_coordinate(char = self[0], keyboards = [QWERTY, QWERTY_SHIFT])
+    row = column = nil
+    r = c = 0
+    keyboards.each do |keyboard|
+      r = 0
+      keyboard.each do |row_chars|
+        c = (row_chars =~ /#{char}/)
+        if c
+          row = r
+          column = c
+          break
+        end
+        r += 1
+      end
+      break if row && column
+    end
+    if row && column
+      Point.new(column, row)
+    else
+      nil
+    end
+  end
+
+  def keyboard_travel_distance(pass = self, keyboards = [QWERTY, QWERTY_SHIFT])
+    total_dist = pass.split('').inject([pass[0],0]) do |last_char_and_dist, c|
+      [c, last_char_and_dist[1] + keyboard_coordinate(last_char_and_dist[0], keyboards).distance(keyboard_coordinate(c, keyboards))]
+    end[1]
+  end
+
+  # this should be a high number.
+  def keyboard_travel_distance_factor(pass = self, keyboards = [QWERTY, QWERTY_SHIFT])
+    if pass.length > 1
+      total_dist = keyboard_travel_distance(pass, keyboards)
+      total_dist / (pass.length-1)
+    else
+      1.0
+    end
+  end
+
+
+  # An attempt to figure out how complex a password is based on things like: key closeness in QUERTY, etc.
+  def kolmogorov_complexity_estimation
+
+  end
 end
 
-include Password
+include PasswordEvaluator
 
 # test code
-["bb","bd","b ","p4ssw0rds","peter","5n3ak3r","    ","l0ser","h1bern4te","Abracadabra","abraCadabra1%","aaaaaaaaBBBBBBBB","abcdefghABCDEFGH","1234567898765432","1337","h4x0r","fA&b@wbP*_a!bYTa",'!@#$%^&}12345qwTYUIsdf^&876',"f29a2e4c1cbf98da0dcb7bd7e502776670d58286"].each do |pass|
-  puts "'#{pass}' => #{valid(pass,20).inspect} with shannon entropy ratio of #{shannon_entropy(pass)/entropy_ideal(pass.length)}"
-end
+# ["bb","bd","b ","p4ssw0rds","peter","5n3ak3r","    ","l0ser","h1bern4te","Abracadabra","abraCadabra1%","aaaaaaaaBBBBBBBB","abcdefghABCDEFGH","1234567898765432","1337","h4x0r","fA&b@wbP*_a!bYTa",'!@#$%^&}12345qwTYUIsdf^&876',"f29a2e4c1cbf98da0dcb7bd7e502776670d58286"].each do |pass|
+#   puts "'#{pass}' => #{valid(pass,20).inspect} with shannon entropy ratio of #{shannon_entropy(pass)/entropy_ideal(pass.length)}"
+# end
 
-puts regex_similar('petermarreck').inspect
+# puts regex_similar('petermarreck').inspect
 
-puts regex_similar('petermarreck').match 'peter.marreck'
+# puts regex_similar('petermarreck').match 'peter.marreck'
+
+puts keyboard_travel_distance_factor('password')
+puts keyboard_travel_distance_factor('wxyz',[ALPHABET])
 
 
 # That look about right? The results look meaningful but I'm not 100% sure about the initialization, I based it on the probability that each character would appear in a random string of the expected total character set, because it crashes with zero... do you have any ideas?

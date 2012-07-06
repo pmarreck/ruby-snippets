@@ -49,7 +49,7 @@ end
 
 module PasswordEvaluator
   # Note: This way to pull in an english dictionary ONLY works on *nix/OS X machines!
-  Dictionary = ["leet","haxor"] + (File.readlines("/usr/share/dict/words") + File.readlines("/usr/share/dict/web2a")).map {|w| w.downcase.chomp }
+  Dictionary = ["leet","haxor"] #+ (File.readlines("/usr/share/dict/words") + File.readlines("/usr/share/dict/web2a")).map {|w| w.downcase.chomp }
   Hexlower = ("a".."f").to_a
   Hexupper = ("A".."F").to_a
   Lowercase = ("g".."z").to_a
@@ -142,14 +142,16 @@ module PasswordEvaluator
   ]
   ALPHABET = ["abcdefghijklmnopqrstuvwxyz"]
 
-  def keyboard_coordinate(char = self[0], keyboards = [QWERTY, QWERTY_SHIFT])
+  def keyboard_coordinate(char = self[0,1], keyboards = [QWERTY, QWERTY_SHIFT])
     row = column = nil
     r = c = 0
     keyboards.each do |keyboard|
       r = 0
       keyboard.each do |row_chars|
+#  puts "I am on row #{r} with row_chars #{row_chars} and char #{char}"
         c = (row_chars =~ /#{char}/)
         if c
+#  puts "Found #{char} at row #{r}, column #{c}"
           row = r
           column = c
           break
@@ -166,8 +168,13 @@ module PasswordEvaluator
   end
 
   def keyboard_travel_distance(pass = self, keyboards = [QWERTY, QWERTY_SHIFT])
-    total_dist = pass.split('').inject([pass[0],0]) do |last_char_and_dist, c|
-      [c, last_char_and_dist[1] + keyboard_coordinate(last_char_and_dist[0], keyboards).distance(keyboard_coordinate(c, keyboards))]
+    total_dist = pass.split('').inject([pass[0,1],0]) do |last_char_and_dist, c|
+      last_coord = keyboard_coordinate(last_char_and_dist[0], keyboards)
+      if last_coord
+        [c, last_char_and_dist[1] + last_coord.distance(keyboard_coordinate(c, keyboards))]
+      else
+        last_char_and_dist
+      end
     end[1]
   end
 

@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 class Array
   def sum
     self.inject(:+)
@@ -5,21 +7,21 @@ class Array
 end
 
 class Point
+
+  DIMENSIONS = 3
+
+  attr_accessor :x, :y, :z
+
   def initialize(*a)
     array = a.flatten
-    raise "Too many numbers" if array.length > 2
-    @array = []
+    raise "Too many numbers" if array.length > 3
     self.x = array[0]
     self.y = array[1]
+    self.z = array[2]
   end
   def to_a
-    @array
+    [x, y, z]
   end
-
-  def x; @array[0]; end
-  def y; @array[1]; end
-  def x=(v); @array[0]=v; end
-  def y=(v); @array[1]=v; end
 
   def [](i)
     case i
@@ -27,6 +29,8 @@ class Point
       self.x
     when 1
       self.y
+    when 2
+      self.z
     else
       nil
     end
@@ -37,19 +41,21 @@ class Point
       self.x = v
     when 1
       self.y = v
+    when 2
+      self.z = v
     else
-      raise IndexError
+      raise IndexError, "a Point only has #{DIMENSIONS} dimensions"
     end
   end
   def distance(other)
     o = other.is_a?(Point) ? other : Point.new(other)
-    Math.hypot(o.x-self.x, o.y-self.y)
+    Math.sqrt((o.x-self.x)**2 + (o.y-self.y)**2 + (o.z-self.z)**2)
   end
 end
 
 module PasswordEvaluator
   # Note: This way to pull in an english dictionary ONLY works on *nix/OS X machines!
-  Dictionary = ["leet","haxor"] #+ (File.readlines("/usr/share/dict/words") + File.readlines("/usr/share/dict/web2a")).map {|w| w.downcase.chomp }
+  Dictionary = ["leet","haxor"] + (File.readlines("/usr/share/dict/words") + File.readlines("/usr/share/dict/web2a")).map {|w| w.downcase.chomp }
   Hexlower = ("a".."f").to_a
   Hexupper = ("A".."F").to_a
   Lowercase = ("g".."z").to_a
@@ -60,22 +66,33 @@ module PasswordEvaluator
   OtherPunctuation = %w[` ~ ! # $ % ^ & * ( ) = + \[ \] \\ { } | : ; " ' < > , / ? ]
   WordCharacters = Hexlower + Lowercase + CompoundWordSeparators
 
+  UNLEET_MAP = {
+    %w[ 0 ø ö ó ò ô ] => "o",
+    %w[ 3 ë é è ê ]   => "e",
+    %w[ @ 4 å ä á à ] => "a",
+    %w[ 5 $ ]         => "s",
+    "6"               => "g",
+    "7"               => "t",
+    "8"               => "b",
+  }
   def entropy(pass)
     pwlength = pass.size.to_f
-    unleeted_pass = pass.dup
-    [["0","O"],["3","E"],["4","A"],["5","S"],["6","G"],["7","T"]].each do |leet|
-      unleeted_pass.gsub! leet[0], leet[1]
+    unleeted_pass = pass.dup.downcase
+    UNLEET_MAP.each do |leet, subs|
+      [leet].flatten.each do |l|
+        unleeted_pass.gsub! l, subs
+      end
     end
-    unleeted_pass1 = unleeted_pass.gsub("1","L").downcase # two variations
-    unleeted_pass2 = unleeted_pass.gsub("1","I").downcase
+    unleeted_pass1 = unleeted_pass.gsub("1","l") # two variations
+    unleeted_pass2 = unleeted_pass.gsub("1","i")
     pw = pass.split('')
     unleeted_pw1 = unleeted_pass1.split('')
     unleeted_pw2 = unleeted_pass2.split('')
     # Skip expensive dictionary check if password contains unusual characters
-    if (unleeted_pw1 - WordCharacters).size == 0 # it might be a dictionary word
+    if (unleeted_pw1 - WordCharacters).size == 0 || (unleeted_pw2 - WordCharacters).size == 0 # it might be a dictionary word
       # if your dictionary has plurals then some of the following "chomp" logic may be superfluous
       return [0.0, "Common word!"] if Dictionary.include?(pass.downcase) or Dictionary.include?(pass.downcase.chomp("s"))
-      return [1.0, "Simple number substitution of letters of a common word!"] if Dictionary.include?(unleeted_pass1) or Dictionary.include?(unleeted_pass2) or Dictionary.include?(unleeted_pass1.chomp("s")) or Dictionary.include?(unleeted_pass2.chomp("s"))
+      return [1.0, "Simple symbol/number substitution of letters of a common word!"] if Dictionary.include?(unleeted_pass1) or Dictionary.include?(unleeted_pass2) or Dictionary.include?(unleeted_pass1.chomp("s")) or Dictionary.include?(unleeted_pass2.chomp("s"))
     end
     symbol_set = []
     [Hexlower, Lowercase, Hexupper, Uppercase, Numbers, CompoundWordSeparators, CommonPunctuation, OtherPunctuation].each do |set|
@@ -128,24 +145,30 @@ module PasswordEvaluator
     Regexp.new('^' << regex_array.join('|') << '$')
   end
 
-  QWERTY = [
-    '`1234567890-=',
-    'qwertyuiop[]\\',
-    "asdfghjkl;'",
-    'zxcvbnm,./'
-  ]
-  QWERTY_SHIFT = [
-    '`~!@#$%^&*()_+',
-    'QWERTYUIOP{}|',
-    "ASDFGHJKL:\"",
-    'ZXCVBNM<>?'
-  ]
-  ALPHABET = ["abcdefghijklmnopqrstuvwxyz"]
+  QWERTY = {
+    reg: [
+      '`1234567890-=',
+      'qwertyuiop[]\\',
+      "asdfghjkl;'",
+      'zxcvbnm,./'
+    ],
+    shift: [
+      '`~!@#$%^&*()_+',
+      'QWERTYUIOP{}|',
+      "ASDFGHJKL:\"",
+      'ZXCVBNM<>?'
+    ]
+  }
+  ALPHABET = {
+    lowercase: [("a".."z").to_a.join],
+    uppercase: [("A".."Z").to_a.join]
+  }
 
-  def keyboard_coordinate(char = self[0,1], keyboards = [QWERTY, QWERTY_SHIFT])
+  def keyboard_coordinate(char = self[0,1], keyboards = QWERTY)
     row = column = nil
     r = c = 0
-    keyboards.each do |keyboard|
+    layer = 0
+    keyboards.each do |char_set, keyboard|
       r = 0
       keyboard.each do |row_chars|
 #  puts "I am on row #{r} with row_chars #{row_chars} and char #{char}"
@@ -159,15 +182,16 @@ module PasswordEvaluator
         r += 1
       end
       break if row && column
+      layer += 1
     end
     if row && column
-      Point.new(column, row)
+      Point.new(column, row, layer)
     else
       nil
     end
   end
 
-  def keyboard_travel_distance(pass = self, keyboards = [QWERTY, QWERTY_SHIFT])
+  def keyboard_travel_distance(pass = self, keyboards = QWERTY)
     total_dist = pass.split('').inject([pass[0,1],0]) do |last_char_and_dist, c|
       last_coord = keyboard_coordinate(last_char_and_dist[0], keyboards)
       if last_coord
@@ -179,7 +203,7 @@ module PasswordEvaluator
   end
 
   # this should be a high number.
-  def keyboard_travel_distance_factor(pass = self, keyboards = [QWERTY, QWERTY_SHIFT])
+  def keyboard_travel_distance_factor(pass = self, keyboards = QWERTY)
     if pass.length > 1
       total_dist = keyboard_travel_distance(pass, keyboards)
       total_dist / (pass.length-1)
@@ -207,7 +231,9 @@ module PasswordEvaluator
   end
 
 
-  # An attempt to figure out how complex a password is based on things like: key closeness in QUERTY, etc.
+  # An attempt to figure out how complex a password is based on things like:
+  #   1) whether it is a dictionary word
+  #   2) key closeness in QUERTY, etc.
   def kolmogorov_complexity_estimation
 
   end
@@ -225,7 +251,6 @@ include PasswordEvaluator
 # puts regex_similar('petermarreck').match 'peter.marreck'
 
 puts keyboard_travel_distance_factor('password')
-puts keyboard_travel_distance_factor('wxyz',[ALPHABET])
+puts keyboard_travel_distance_factor('PASSWORD')
+puts keyboard_travel_distance_factor('wxyz',ALPHABET)
 
-
-# That look about right? The results look meaningful but I'm not 100% sure about the initialization, I based it on the probability that each character would appear in a random string of the expected total character set, because it crashes with zero... do you have any ideas?

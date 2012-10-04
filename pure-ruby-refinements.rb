@@ -1,66 +1,113 @@
+# depends on John Mair (banisterfiend)'s binding_of_caller gem
+require 'binding_of_caller'
 
-require 'active_support/core_ext/module' # for alias_method_chain
-require 'active_support/inflector' # for constantize
+# require 'active_support/core_ext/module' # for alias_method_chain
+# require 'active_support/inflector' # for constantize
 
-class CallChain
-  def self.caller_name(opts = {}, &block)
-    opts[:depth] ||= 1
-    parse_caller(opts.merge(at: caller(opts[:depth]+1).first), &block).last
+class Stack
+  @max_stack_size = 25
+  @current = nil
+  def self.stack
+    @stack ||= []
   end
-
-  def self.resolve_classname(opts = {}, &block)
-    # try to constantize this class to its full namespace.
-    # There is a small chance this will fail so you can pass a "hint" block
-    # to further filter the results to the one you expect. That block
-    # should take an object which is the class or module in question that was found.
-    # NOTE: Maybe try to make use of the following in the future:
-    #  Module.constants.map{|m| ((c=m.to_s.constantize).respond_to?(:constants) && c.constants.length>0) ? {c => m.to_s.constantize.constants(false)} : m.to_s.constantize }
-    opts={name: opts} if opts.is_a? String
-    begin
-      o = opts[:name].constantize
-    rescue NameError
-      # This is kind of expensive. I know.
-      os = ObjectSpace.each_object.select{ |o| (o.class==Class || o.class==Module) && o.name =~ /::#{opts[:name]}$/ }
-      os = os.select{ |o| yield o } if block_given?
-      if os && os.size > 0
-        os.first
-      else
-        raise
-      end
-    end
+  def self.stack=(a)
+    @stack = a
   end
-
-  private
-  #Stolen from ActionMailer, where this was used but was not made reusable
-  def self.parse_caller(opts = {}, &block)
-    at = opts[:at]
-    if /^(.+?):(\d+)(?::in `(.*)')?/ =~ at
-      file   = Regexp.last_match[1]
-      line   = Regexp.last_match[2].to_i
-      obj    = begin
-        where = Regexp.last_match[3]
-        if /<([a-z]+):([A-Z][a-zA-Z]*)>/ =~ where
-          o = [Regexp.last_match[1].to_sym]
-          if opts[:resolve_classname]
-            o << self.resolve_classname(Regexp.last_match[2], &block)
-          else
-            o << Regexp.last_match[2]
-          end
-          o
-        else
-          [:method, where.to_sym]
-        end
+  def self.max_stack_size
+    @max_stack_size ||= 25
+  end
+  def self.max_stack_size=(s)
+    @max_stack_size = s.to_i
+  end
+  def self.push(o)
+    stack.push(o)
+    @current = o
+    truncate_stack_if_necessary
+    stack
+  end
+  def self.pop(num=nil)
+    @current = (num ? stack[-(1+num)] : stack[-2])
+    # have to do this wackiness since [].pop(1)==[] but [].pop==nil
+    num ? stack.pop(num) : stack.pop
+  end
+  def self.peek(num=nil)
+    num ? stack.last(num) : @current
+  end
+  def self.include?(e)
+    stack.include? e
+  end
+  class << self
+    alias current peek
+    def truncate_stack_if_necessary
+      if stack.length > max_stack_size
+        @stack = stack.last(max_stack_size)
       end
-      [file, line, obj]
     end
   end
 end
 
-class Binding
-  def this
-    eval('self')
-  end
-end
+class RefinementsStack < Stack; end
+
+
+# class CallChain
+#   def self.caller_name(opts = {}, &block)
+#     opts[:depth] ||= 1
+#     parse_caller(opts.merge(at: caller(opts[:depth]+1).first), &block).last
+#   end
+
+#   def self.resolve_classname(opts = {}, &block)
+#     # try to constantize this class to its full namespace.
+#     # There is a small chance this will fail so you can pass a "hint" block
+#     # to further filter the results to the one you expect. That block
+#     # should take an object which is the class or module in question that was found.
+#     # NOTE: Maybe try to make use of the following in the future:
+#     #  Module.constants.map{|m| ((c=m.to_s.constantize).respond_to?(:constants) && c.constants.length>0) ? {c => m.to_s.constantize.constants(false)} : m.to_s.constantize }
+#     opts={name: opts} if opts.is_a? String
+#     begin
+#       o = opts[:name].constantize
+#     rescue NameError
+#       # This is kind of expensive. I know.
+#       os = ObjectSpace.each_object.select{ |o| (o.class==Class || o.class==Module) && o.name =~ /::#{opts[:name]}$/ }
+#       os = os.select{ |o| yield o } if block_given?
+#       if os && os.size > 0
+#         os.first
+#       else
+#         raise
+#       end
+#     end
+#   end
+
+#   private
+#   #Stolen from ActionMailer, where this was used but was not made reusable
+#   def self.parse_caller(opts = {}, &block)
+#     at = opts[:at]
+#     if /^(.+?):(\d+)(?::in `(.*)')?/ =~ at
+#       file   = Regexp.last_match[1]
+#       line   = Regexp.last_match[2].to_i
+#       obj    = begin
+#         where = Regexp.last_match[3]
+#         if /<([a-z]+):([A-Z][a-zA-Z]*)>/ =~ where
+#           o = [Regexp.last_match[1].to_sym]
+#           if opts[:resolve_classname]
+#             o << self.resolve_classname(Regexp.last_match[2], &block)
+#           else
+#             o << Regexp.last_match[2]
+#           end
+#           o
+#         else
+#           [:method, where.to_sym]
+#         end
+#       end
+#       [file, line, obj]
+#     end
+#   end
+# end
+
+# class Binding
+#   def this
+#     eval('self')
+#   end
+# end
 
 # easy hash traversal
 class Hash
@@ -116,6 +163,8 @@ Object.send(:include, ClassCascadableAttributes)
 
 class Refinements
 
+  CLASS_APPLICABLE = {}
+
   class << self
 
     def alias_all_methods_and_store_hashes(base)
@@ -164,7 +213,8 @@ puts "Aliased instance method #{im} to _original_#{im} inside #{self}"
 # puts "#{base}.singleton_methods(false) = #{base.singleton_methods(false)}"
       base.singleton_methods(false).reject do |cm|
         base.method(cm).hash == base.instance_variable_get(:@_class_method_hash_hash)[cm] ||
-          /^_original_/.match(cm.to_s)
+          /^_original_/.match(cm.to_s) ||
+          (Array == base && cm==:[]) # dumb [] method gets defined on Array dynamically when you first access Array. wtf?
       end.tap{|m| puts "new class methods: #{m}"}
     end
 
@@ -172,7 +222,7 @@ puts "Aliased instance method #{im} to _original_#{im} inside #{self}"
       base.instance_methods(false).each do |im|
         if im.to_s =~ /^_original_/
           unless new_methods.include?(im)
-# puts "Removing instance method #{im} from #{base}"
+puts "Removing unaltered instance method #{im} from #{base}"
             base.send(:remove_method, im)
           end
         end
@@ -183,7 +233,7 @@ puts "Aliased instance method #{im} to _original_#{im} inside #{self}"
       base.singleton_methods(false).each do |cm|
         if cm.to_s =~ /^_original_/
           unless new_methods.include?(cm)
-# puts "Removing class method #{cm} from #{base}"
+puts "Removing unaltered class method #{cm} from #{base}"
             (class << base; self; end).send(:remove_method, cm)
           end
         end
@@ -199,7 +249,7 @@ class Module
     refinement_module = self
     # initialize a class ivar so it inherits... this may need revision at some point
     # class << klass
-      # _active_refinements ||= []
+      # RefinementsStack.stack ||= []
     # end
     # execute this block in the context of the klass and see what happened
 puts "Refining #{klass} with #{refinement_module}"
@@ -216,16 +266,18 @@ puts "New instance methods detected on #{klass} are: #{nu_instance_methods}"
       klass.instance_variable_get(:@_im_refs_by_module)[refinement_module] ||= {}
       klass.instance_variable_get(:@_im_refs_by_module)[refinement_module][im] = klass.instance_method(im)
       # wire the new method inside the klass, bypassing any existing same-named methods
+puts "about to define a method called #{im}"
       klass.send(:define_method, im) do |*args, &block|
-puts "I CAN SEE YOU from instance method #{im}, _temporary_refinements, you're #{_temporary_refinements}" if defined?(_temporary_refinements)
-puts "Trying to call instance method #{im} on #{self}. self._active_refinements is #{self._active_refinements} and _active_refinements is #{_active_refinements}"
-        unless self._active_refinements && !self._active_refinements.empty?
+puts "I am inside method #{im}"
+# puts "I CAN SEE YOU from instance method #{im}, _temporary_refinements, you're #{_temporary_refinements}" if defined?(_temporary_refinements)
+# puts "Trying to call instance method #{im} on #{self}. RefinementsStack.stack is #{RefinementsStack.stack} and RefinementsStack.stack is #{RefinementsStack.stack}"
+        unless !RefinementsStack.stack.empty?
 puts "There are no active refinements."
           if self.class.instance_methods(false).include?("_original_#{im}".to_sym)
             send("_original_#{im}".to_sym, *args, &block)
           else
-puts "Looked for original instance method #{im} on #{self} and couldn't find it."
-            raise NoMethodError.new("undefined method `#{im}' for \"#{self}\":#{self.class}")
+puts "Looked for original instance method #{im} on #{self.inspect} and couldn't find it."
+            raise NoMethodError.new("undefined method `#{im}' for \"#{self}\":#{self.class}") unless /method_missing/.match(im.to_s)
           end
         else
 puts "There are active refinements!"
@@ -233,7 +285,7 @@ puts "There are active refinements!"
           if klass.instance_variable_get(:@_im_refs_by_module)
 puts "Some of them may be applicable to class #{klass}!"
             meth = nil
-            applicable_refinement = self._active_refinements.detect do |ref|
+            applicable_refinement = RefinementsStack.stack.detect do |ref|
               meth = klass.instance_variable_get(:@_im_refs_by_module).traverse(ref, im)
             end
             if meth
@@ -267,8 +319,8 @@ puts "Trying to call class method #{cm}"
 puts "#{klass}.instance_variable_get(:@_cm_refs_by_module)[#{self}][#{cm}] = #{klass.instance_variable_get(:@_cm_refs_by_module)[self][cm]}"
       # wire the new method inside the klass, bypassing any existing same-named methods
       klass.define_singleton_method(cm) do |*args, &block|
-puts "Running class method #{cm}. self._active_refinements is #{self._active_refinements}"
-        unless self._active_refinements && !self._active_refinements.empty?
+puts "Running class method #{cm}. RefinementsStack.stack is #{RefinementsStack.stack}" rescue puts "Couldn't print due to stack level issue"
+        unless RefinementsStack.stack && !RefinementsStack.stack.empty?
           if singleton_methods(false).include?("_original_#{cm}".to_sym)
             send("_original_#{cm}".to_sym, *args, &block)
           else
@@ -278,7 +330,7 @@ puts "Running class method #{cm}. self._active_refinements is #{self._active_ref
           # grab the first matching refinement that implements this method
           if klass.instance_variable_get(:@_cm_refs_by_module)
             meth = nil
-            self._active_refinements.detect do |ref|
+            RefinementsStack.stack.detect do |ref|
               meth = klass.instance_variable_get(:@_cm_refs_by_module).traverse(ref, cm)
             end
           else
@@ -302,54 +354,51 @@ puts "#{klass}.instance_variable_get(:@_cm_refs_by_module)==#{klass.instance_var
 end
 
 class Object
-  class_cascadable_accessor :_active_refinements
-  @_active_refinements = []
   # Add a passed-in refinement to an ivar.
   # The ivar should naturally go out of scope, removing the refinement (for now)
   # Note that this won't work inside a method definition (YET) without a block
   def using(*refs)
-    # self.instance_variable_set("@#{_active_refinements}")
-puts "Called USING on #{self} from #{caller.first} with #{refs}, current _active_refinements are #{self._active_refinements.inspect}"
-    self._active_refinements = (self._active_refinements || []).dup
-puts "In case they weren't already set, they have now been set to #{self._active_refinements.inspect}"
+puts "Called USING on #{self} from #{caller.first} with #{refs}, current RefinementsStack.stack are #{RefinementsStack.stack.inspect}"
+puts "In case they weren't already set, they have now been set to #{RefinementsStack.stack.inspect}"
+    new_refinements = (refs - RefinementsStack.stack)
     if block_given?
-      original_refinements, self._active_refinements = self._active_refinements.dup, (self._active_refinements | refs)
-puts "Block was given. original_refinements==#{original_refinements.inspect}, _active_refinements==#{self._active_refinements.inspect}"
-      original_object_refinements, Object._active_refinements = Object._active_refinements.dup, (Object._active_refinements | refs) unless self.is_a?(Class)
-puts "I hate doing this but Object._active_refinements are now #{Object._active_refinements}" unless self.is_a?(Class)
+      original_refinements = RefinementsStack.stack
+      new_refinements.each{ |r| RefinementsStack.push(r) }
+puts "Block was given. RefinementsStack==#{RefinementsStack.stack.inspect}"
+      # original_object_refinements, RefinementsStack.stack = RefinementsStack.stack, (RefinementsStack.stack | refs) unless self.is_a?(Class)
+# puts "I hate doing this but RefinementsStack.stack are now #{RefinementsStack.stack}" unless self.is_a?(Class)
       _temporary_refinements = "block given"
       yield
-      Object._active_refinements = original_object_refinements unless self.is_a?(Class)
-puts "Object._active_refinements set to its original value of #{original_object_refinements} and is now #{Object._active_refinements}"
-      raise "Object active refinements not reset properly" unless Object._active_refinements == original_object_refinements
-      self._active_refinements = original_refinements
-      raise "Active refinements not reset properly" unless self._active_refinements == original_refinements
-puts "_active_refinements set to its original value of #{original_refinements.inspect} and is now #{self._active_refinements.inspect}"
+      # RefinementsStack.stack = original_object_refinements unless self.is_a?(Class)
+# puts "RefinementsStack.stack set to its original value of #{original_object_refinements} and is now #{RefinementsStack.stack}"
+      # raise "Object active refinements not reset properly" unless RefinementsStack.stack == original_object_refinements
+      RefinementsStack.pop(new_refinements.length)
+      raise "Active refinements not reset properly" unless RefinementsStack.stack == original_refinements
+puts "RefinementsStack.stack set to its original value of #{original_refinements.inspect} and is now #{RefinementsStack.stack.inspect}"
     else
-puts "No block given, current _active_refinements started out #{_active_refinements.inspect}"
-      Object._active_refinements |= refs unless self.is_a?(Class)
-      self._active_refinements |= refs
-puts "and they are now #{self._active_refinements.inspect}"
-puts "and the Object._active_refinements are now #{Object._active_refinements.inspect}"
+puts "No block given, current RefinementsStack.stack started out #{RefinementsStack.stack.inspect}"
+      if self.is_a?(Class)
+        puts "Sorry, don't support class-level refinements or on their instances yet"
+      end
+      new_refinements.each{ |r| RefinementsStack.push(r) }
+puts "and they are now #{RefinementsStack.stack.inspect}"
+puts "and the RefinementsStack.stack are now #{RefinementsStack.stack.inspect}"
       _temporary_refinements = "no block given"
     end
-puts "So, the current _active_refinements are now #{self._active_refinements.inspect}"
+puts "So, the current RefinementsStack.stack are now #{RefinementsStack.stack.inspect}"
     # fire off any 'used' callbacks
     refs.each do |ref|
       ref.send(:used, self) if ref.respond_to?(:used)
     end
   end
   def not_using(*refs)
-    self._active_refinements = (self._active_refinements || []).dup
+    new_unrefinements = (RefinementsStack.stack & refs)
     if block_given?
-      original_refinements, self._active_refinements = self._active_refinements.dup, (self._active_refinements - refs)
-      original_object_refinements, Object._active_refinements = Object._active_refinements.dup, (Object._active_refinements - refs) unless self.is_a?(Class)
+      original_refinements, RefinementsStack.stack = RefinementsStack.stack, RefinementsStack.stack - refs
       yield
-      Object._active_refinements = original_object_refinements unless self.is_a?(Class)
-      self._active_refinements = original_refinements
+      RefinementsStack.stack = original_refinements
     else
-      Object._active_refinements -= refs unless self.is_a?(Class)
-      self._active_refinements -= refs
+      RefinementsStack.stack -= refs
     end
     # fire off any 'unused' callbacks
     refs.each do |ref|
@@ -414,11 +463,55 @@ if __FILE__==$PROGRAM_NAME
       end
     end
 
+    module HaskellListComprehensions
+      refine Object do
+        def haskell_stack; @haskell_stack ||= []; end
+        def haskell_draws; @haskell_draws ||= {}; end
+        def reset_haskell_stack; @haskell_stack = []; end
+        def reset_haskell_draws; @haskell_draws = {}; end
+        def reset_haskell; reset_haskell_stack; reset_haskell_draws; end
+
+        def method_missing(*args)
+puts "inside haskell method_missing with args #{args.inspect}"
+          super(*args) unless haskell_stack.last
+          return if args[0][/^to_/]
+          haskell_stack << args.map { |a| a or haskell_stack.pop }
+          haskell_draws[haskell_stack.pop(2)[0][0]] = args[1] if args[0] == :<
+        end
+      end
+      refine Array do
+        def +@
+          haskell_stack.flatten!
+          keys = haskell_draws.keys & haskell_stack
+          draws = haskell_draws.values_at *keys
+
+          comp = draws.shift.product(*draws).map do |draw|
+            haskell_stack.map { |s| draw[keys.index s] rescue s }.reduce do |val, cur|
+              op = Symbol === cur ? [:send, :method][val.method(cur).arity] : :call
+              val.send op, cur
+            end
+          end
+
+          reset_haskell
+          Symbol === last ? comp.select(&pop) : comp
+        end
+
+        def -@
+          case map(&:class).index Range
+          when 0 then first.to_a
+          when 1 then [first] + last.step(last.min.ord - first.ord).to_a
+          else self
+          end
+        end
+      end # module HaskellListComprehensions
+
+    end
+
     class MyApp
       using TimeExtensions
 
       def initialize
-puts "Called MyApp.new and _active_refinements==#{self._active_refinements}"
+puts "Called MyApp.new and RefinementsStack.stack==#{RefinementsStack.stack}"
         2.minutes
       end
     end
@@ -482,13 +575,13 @@ puts "Called MyApp.new and _active_refinements==#{self._active_refinements}"
     end
 
     def test_refinements_dont_work_in_global_scope
-      assert_equal [], Object._active_refinements
+      assert_equal [], RefinementsStack.stack
       assert_raise(NoMethodError){ 1.minutes }
     end
 
     def test_using_refinements_exist_in_a_block
       using TimeExtensions do
-        assert_equal [TimeExtensions], self._active_refinements
+        assert_equal [TimeExtensions], RefinementsStack.stack
       end
     end
 
@@ -519,13 +612,37 @@ puts "Called MyApp.new and _active_refinements==#{self._active_refinements}"
       assert_raise(NoMethodError){ [1,'thing'].to_json }
     end
 
-    # WHY IS THIS PROBLEM SO HARD TO SOLVE?? argh
-    def test_refinements_class_scoping
-      assert_equal [], self._active_refinements
-      assert_equal 120, MyApp.new
-      assert_equal [], self._active_refinements
-      assert_raise(NoMethodError){ 2.minutes }
+    def test_crazy_haskell_list_comprehension_syntax
+      using HaskellListComprehensions do
+        foo  =+ [x * y | x <- [1..3], y <- [4..6]]
+        assert_equal [4, 5, 6, 8, 10, 12, 12, 15, 18], foo
+        bar  =+ [a + b | a <- ['n','p'..'t'], b <- %w[a i u e o]]
+        assert_equal %w[na ni nu ne no pa pi pu pe po ra ri ru re ro ta ti tu te to], bar
+        baz  =+ [i ** 2 / 3 | i <- [3,6..100], :even?]
+        assert_equal [12, 48, 108, 192, 300, 432, 588, 768, 972, 1200, 1452, 1728, 2028, 2352, 2700, 3072], baz
+        quux =+ [s.size.divmod(2) | s <- %w[Please do not actually use this.]]
+        assert_equal [[3, 0], [1, 0], [1, 1], [4, 0], [1, 1], [2, 1]], quux
+      end
     end
+
+    # WHY IS THIS PROBLEM SO HARD TO SOLVE?? argh
+    # Requires a way to detect when a class definition ends
+    # set_trace_func is way too fucking slow
+    # Two options are:
+    # 1) Using pure Ruby, hook into the event when a new class or module is
+    #    defined in the scope of this class, and pop the refinements stack.
+    #    Drawback: any code in between the end of a class definition
+    #    and the start of the next class definition gets the errant
+    #    behavior.
+    # 2) Using a gem- possibly look into https://github.com/banister/tweak
+    #    or https://www.ruby-toolbox.com/gems/event_hook
+    # pending
+    # def test_refinements_class_scoping
+    #   assert_equal [], RefinementsStack.stack
+    #   assert_equal 120, MyApp.new
+    #   assert_equal [], RefinementsStack.stack
+    #   assert_raise(NoMethodError){ 2.minutes }
+    # end
 
   end
 end

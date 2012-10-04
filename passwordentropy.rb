@@ -254,3 +254,5 @@ puts keyboard_travel_distance_factor('password')
 puts keyboard_travel_distance_factor('PASSWORD')
 puts keyboard_travel_distance_factor('wxyz',ALPHABET)
 
+puts shannon_entropy "correct horse battery staple"
+puts shannon_entropy "aaaaaaa bbbbb bbbbbbb cccccc"

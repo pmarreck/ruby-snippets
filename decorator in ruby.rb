@@ -1,15 +1,35 @@
+require 'active_support/core_ext/module/delegation'
+
 # Decorator module
 module Decorator
   attr_reader :decorated
-  DELEGATED = [:is_a?, :kind_of?, :respond_to?, :method_missing, :class]
+  # DELEGATED = [:is_a?, :kind_of?, :respond_to?, :class]
+
+  alias decorator_class class
 
   def initialize(dec)
     @decorated = dec
   end
 
-  DELEGATED.each do |delegated_method|
-    define_method delegated_method do |*args|
-      decorated.send(*(args.unshift(delegated_method)))
+  delegate :is_a?, :kind_of?, :respond_to?, :class, to: :decorated
+
+  def method_missing(*args)
+    decorated.send(*args)
+  end
+
+  # Use this if you don't want to use active_support:
+  # DELEGATED.each do |delegated_method|
+  #   define_method delegated_method do |*args|
+  #     decorated.send(*(args.unshift(delegated_method)))
+  #   end
+  # end
+
+  def decorators
+    # note: can't use respond_to? because it's delegated...
+    if decorated.methods.include?(:decorators)
+      decorated.decorators << decorator_class
+    else
+      [decorator_class]
     end
   end
 
@@ -45,6 +65,16 @@ class Coffee
   def cost
     1.25
   end
+  def flavor
+    "hazelnut"
+  end
+end
+
+class ActsLikeTime
+  include Decorator
+  def days
+    self * 86400
+  end
 end
 
 ########## inline tests
@@ -52,24 +82,55 @@ if __FILE__==$PROGRAM_NAME
   require 'test/unit'
   class RubyDecoratorTest < Test::Unit::TestCase
 
+    def setup
+      @timey_number            ||= ActsLikeTime.new(5)
+      @whipmilkcoffee          ||= Whip.new(Milk.new(Coffee.new))
+      @whipwhipcoffee          ||= Whip.new(Whip.new(Coffee.new))
+      @sprinkleswhipmilkcoffee ||= Sprinkles.new(@whipmilkcoffee)
+    end
+
     def test_coffee_cost
-      assert_equal 1.85, Whip.new(Milk.new(Coffee.new)).cost.round(2)
+      assert_equal 1.85, @whipmilkcoffee.cost.round(2)
     end
 
     def test_coffee_is_a
-      assert Whip.new(Milk.new(Coffee.new)).is_a?(Coffee), "Whipped milk coffee is_a not a coffee!"
+      assert @whipmilkcoffee.is_a?(Coffee), "Whipped milk coffee is_a not a coffee!"
     end
 
     def test_coffee_kind_of
-      assert Whip.new(Milk.new(Coffee.new)).kind_of?(Coffee), "Whipped milk coffee is not a kind_of coffee!"
+      assert @whipmilkcoffee.kind_of?(Coffee), "Whipped milk coffee is not a kind_of coffee!"
     end
 
     def test_coffee_double_whip
-      assert_equal 1.65, Whip.new(Whip.new(Coffee.new)).cost.round(2)
+      assert_equal 1.65, @whipwhipcoffee.cost.round(2)
     end
 
     def test_decorators_are_class_coffee
-      assert_equal Coffee, Whip.new(Milk.new(Coffee.new)).class
+      assert_equal Coffee, @whipmilkcoffee.class
+    end
+
+    def test_decorator_inspection
+      assert_equal [Milk, Whip, Sprinkles], @sprinkleswhipmilkcoffee.decorators
+    end
+
+    def test_method_fallthrough
+      assert_equal "hazelnut", @whipmilkcoffee.flavor
+    end
+
+    def test_alternative_to_monkeypatching_fixnum
+      assert_equal 432000, @timey_number.days
+    end
+
+    def test_still_seems_like_a_fixnum
+      assert_equal 10, @timey_number + 5
+    end
+
+    def test_still_says_its_a_fixnum
+      assert @timey_number.is_a?(Fixnum), "num is not saying it's a Fixnum"
+    end
+
+    def test_knows_whats_decorating_it
+      assert_equal [ActsLikeTime], @timey_number.decorators
     end
 
   end

@@ -3,21 +3,36 @@ require 'active_support/core_ext/module/delegation'
 # Decorator module
 module Decorator
   attr_reader :decorated
-  # DELEGATED = [:is_a?, :kind_of?, :respond_to?, :class]
+  # DELEGATED = [:is_a?, :kind_of?, :respond_to?, :class,
+  # :marshal_dump, :marshal_load,
+  # :freeze, :taint, :untaint, :trust, :untrust,
+  # :methods, :protected_methods, :public_methods,
+  # :object_id,
+  # :!, :!=, :==, :===, :eql?, :hash,
+  # :dup, :clone, :inspect]
 
   alias decorator_class class
+  alias decorator_respond_to? respond_to?
+  alias decorator_object_id object_id
 
   def initialize(dec)
     @decorated = dec
   end
 
-  delegate :is_a?, :kind_of?, :respond_to?, :class, to: :decorated
+  delegate :is_a?, :kind_of?, :respond_to?, :class,
+    :marshal_dump, :marshal_load,
+    :freeze, :taint, :untaint, :trust, :untrust,
+    :methods, :protected_methods, :public_methods,
+    :object_id,
+    :!, :!=, :==, :===, :eql?, :hash,
+    :dup, :clone, :inspect,
+    to: :decorated
 
   def method_missing(*args)
     decorated.send(*args)
   end
 
-  # Use this if you don't want to use active_support:
+  # Use this if you don't want to use active_support. Also uncomment the constant
   # DELEGATED.each do |delegated_method|
   #   define_method delegated_method do |*args|
   #     decorated.send(*(args.unshift(delegated_method)))
@@ -25,12 +40,10 @@ module Decorator
   # end
 
   def decorators
-    # note: can't use respond_to? because it's delegated...
-    if decorated.methods.include?(:decorators)
-      decorated.decorators << decorator_class
-    else
-      [decorator_class]
-    end
+    # Note: can't use respond_to? because it's delegated...
+    # So I also had to either rescue here or monkeypatch Object.
+    # Decided to just rescue.
+    (decorated.decorators rescue []) << decorator_class
   end
 
 end
@@ -131,6 +144,16 @@ if __FILE__==$PROGRAM_NAME
 
     def test_knows_whats_decorating_it
       assert_equal [ActsLikeTime], @timey_number.decorators
+    end
+
+    def test_object_equivalence_even_when_decorated
+      assert_equal Sprinkles.new(a=Coffee.new), a
+    end
+
+    def test_marshal_dump_equivalence
+      b = Sprinkles.new(a=Coffee.new)
+      # Y U NO PASS?
+      assert_equal Marshal.dump(b), Marshal.dump(a)
     end
 
   end

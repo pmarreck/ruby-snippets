@@ -1,5 +1,7 @@
 # encoding: utf-8
 
+puts RUBY_VERSION
+
 class Array
   def sum
     self.inject(:+)
@@ -126,13 +128,12 @@ module PasswordEvaluator
   end
 
   def regex_similar(pass = self)
-    # Matches any password with a levenshtein distance of 1... in theory
+    # Generates a regex that matches any password with a levenshtein distance of 1... in theory
     regex_array = []
     regex_string = ''
     pass_array = pass.split('')
     # start insertion matches
-    regex_array << ".#{pass}"
-    pass_array.length.times do |i|
+    (pass_array.length-1).downto(0) do |i|
       temp_c = pass_array[i]
       # add substitution or deletion matches
       pass_array[i] = "[^#{temp_c}]?"
@@ -142,7 +143,9 @@ module PasswordEvaluator
       regex_array << pass_array.join
       pass_array[i] = temp_c
     end
-    Regexp.new('^' << regex_array.join('|') << '$')
+    regex_array << ".#{pass}"
+    regex_string = '^(?>' << regex_array.join('|') << ')$'
+    Regexp.new(regex_string)
   end
 
   QWERTY = {
@@ -212,6 +215,7 @@ module PasswordEvaluator
     end
   end
 
+  # Computes the Levenshtein distance between 2 strings
   def dameraulevenshtein(seq1, seq2 = self)
     oneago = nil
     thisrow = (1..seq2.size).to_a + [0]
@@ -236,6 +240,8 @@ module PasswordEvaluator
   #   2) key closeness in QUERTY, etc.
   def kolmogorov_complexity_estimation
 
+    # something like... Shannon entropy + keyboard travel distance + dictionary word
+
   end
 end
 
@@ -246,9 +252,12 @@ include PasswordEvaluator
 #   puts "'#{pass}' => #{valid(pass,20).inspect} with shannon entropy ratio of #{shannon_entropy(pass)/entropy_ideal(pass.length)}"
 # end
 
-# puts regex_similar('petermarreck').inspect
+puts regex_similar('petermarreck').inspect
 
 # puts regex_similar('petermarreck').match 'peter.marreck'
+
+
+
 
 puts keyboard_travel_distance_factor('password')
 puts keyboard_travel_distance_factor('PASSWORD')
@@ -256,3 +265,7 @@ puts keyboard_travel_distance_factor('wxyz',ALPHABET)
 
 puts shannon_entropy "correct horse battery staple"
 puts shannon_entropy "aaaaaaa bbbbb bbbbbbb cccccc"
+
+puts dameraulevenshtein('peter','petre')
+
+puts regex_similar('petermarreck').match('apetermarreck')

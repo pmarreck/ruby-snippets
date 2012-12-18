@@ -4,6 +4,9 @@ require 'binding_of_caller'
 # require 'active_support/core_ext/module' # for alias_method_chain
 # require 'active_support/inflector' # for constantize
 
+# The original ruby test for actual refinements is at:
+# http://svn.ruby-lang.org/cgi-bin/viewvc.cgi/trunk/test/ruby/test_refinement.rb?view=markup&pathrev=38239
+
 class Stack
   @max_stack_size = 25
   @current = nil

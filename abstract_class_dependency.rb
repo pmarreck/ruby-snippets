@@ -39,9 +39,66 @@ module AbstractClassDependency
         end
       end
     end
-  end
 
+    def autoinclude(*module_strs)
+      raise(ArgumentError, 'Argument(s) must not be an actual Module') if module_strs.any?{|m| m.is_a? Module}
+      module_strs = module_strs.flatten.map(&:to_s)
+      @autoincluded_modules ||= []
+      @autoincluded_modules |= module_strs.dup
+      self.class_eval do
+        unless methods.include?(:method_missing_without_dynamic_include)
+          alias method_missing_without_dynamic_include method_missing
+          def method_missing_with_dynamic_include(*args)
+            klass = self.class
+            cycle_module_strs = klass.instance_variable_get(:@autoincluded_modules).dup
+            begin
+              mod = eval(cycle_module_strs.shift)
+              klass.send(:include, mod) unless klass.include? mod
+              send(*args)
+            rescue NameError
+              if cycle_module_strs.size > 0
+                retry
+              else
+                method_missing_without_dynamic_include(*args)
+              end
+            end
+          end
+          alias method_missing method_missing_with_dynamic_include
+        end
+      end
+    end
+
+    def autoextend(*module_strs)
+      raise(ArgumentError, 'Argument(s) must not be an actual Module') if module_strs.any?{|m| m.is_a? Module}
+      module_strs = module_strs.flatten.map(&:to_s)
+      @autoextended_modules ||= []
+      @autoextended_modules |= module_strs.dup
+      cycle_module_strs = module_strs.dup
+      self.singleton_class.class_eval do
+        unless methods.include?(:method_missing_without_dynamic_extend)
+          alias method_missing_without_dynamic_extend method_missing
+          def method_missing_with_dynamic_extend(*args)
+            klass = self
+            cycle_module_strs = klass.instance_variable_get(:@autoextended_modules).dup
+            begin
+              mod = eval(cycle_module_strs.shift)
+              klass.send(:extend, mod) unless klass.singleton_class.include? mod
+              send(*args)
+            rescue NameError
+              if cycle_module_strs.size > 0
+                retry
+              else
+                method_missing_without_dynamic_extend(*args)
+              end
+            end
+          end
+          alias method_missing method_missing_with_dynamic_extend
+        end
+      end
+    end
+  end
 end
+
 if __FILE__==$PROGRAM_NAME
   class B
     def self.hi
@@ -58,6 +115,11 @@ if __FILE__==$PROGRAM_NAME
       def self.raps
         'Run DMC'
       end
+    end
+  end
+  module DeferredMethods
+    def git
+      'some'
     end
   end
   class A
@@ -108,6 +170,14 @@ if __FILE__==$PROGRAM_NAME
       send('yo/mtv_class').raps
     end
   end
+  class G
+    include AbstractClassDependency
+    autoinclude :DeferredMethods
+  end
+  class H
+    include AbstractClassDependency
+    autoextend :DeferredMethods
+  end
 
   require 'test/unit'
   class TestAbstractDependency < Test::Unit::TestCase
@@ -131,6 +201,16 @@ if __FILE__==$PROGRAM_NAME
     def test_depends_on_namespaced_classes
       assert_equal 'Run DMC', F.check_run_named
       assert_equal 'Run DMC', F.check_run
+    end
+    def test_autoinclude
+      assert_nothing_raised { G.new.git }
+      assert_equal 'some', G.new.git
+      assert_raise(NoMethodError){ G.git }
+    end
+    def test_autoextend
+      assert_nothing_raised { H.git }
+      assert_equal 'some', H.git
+      assert_raise(NoMethodError){ H.new.git }
     end
   end
 end

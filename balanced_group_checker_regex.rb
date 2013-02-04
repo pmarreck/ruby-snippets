@@ -3,7 +3,13 @@ require 'test/unit'
 module RubyRegexMeister
   BALANCED_GROUP_CHECKER = /(
     (?<non_grouping_char>
-      [^\(\{\[\<\)\}\]\>]
+      [^\(\{\[\<\)\}\]\>\"]
+    ){0}
+    (?<double_quoted_group>
+      \" \g<content> \"
+    ){0}
+    (?<single_quoted_group>
+      \' \g<content> \'
     ){0}
     (?<parens_group>
       \( \g<content> \)
@@ -22,6 +28,8 @@ module RubyRegexMeister
         \g<parens_group>   |
         \g<brackets_group> |
         \g<chevrons_group> |
+        \g<double_quoted_group> |
+        \g<single_quoted_group> |
         \g<braces_group>
       )
     ){0}
@@ -61,6 +69,10 @@ class YouSayImpossibleISayBullshitTest < Test::Unit::TestCase
 
   def test_intersecting_groups_no_match
     assert_nil BALANCED_GROUP_CHECKER.match('(So I started [ and then I jizzed) my pants]'), "Matching on intersecting groups, you kinky bastard"
+  end
+
+  def test_quoted_groups
+    assert BALANCED_GROUP_CHECKER.match('"some email" <some@email.com>'), "Quoted strings match"
   end
 
   def test_many_nests_bitches_many_nests

@@ -3,29 +3,92 @@ require 'active_support/inflector'
 module AbstractClassDependency
   def self.included(base)
     base.extend ClassMethods
+    base.send(:include, InstanceMethods)
+  end
+
+  module InstanceMethods
+    # includes are run for each new object by actually extending that new object
+    def run_includes
+      di = self.class.instance_variable_get(:@_deferred_includes)
+      if di
+        di.each{ |m| extend send(m) }
+        self.class.instance_variable_set(:@_deferred_includes, nil)
+      end
+    end
+    def initialize(*args, &block)
+      self.class.class_eval do
+        run_setup
+        run_extends
+      end
+      run_includes
+      super
+    end
   end
 
   module ClassMethods
-    def depends_on_class(class_str, params={})
-      raise(ArgumentError, 'First parameter must not be an actual Class') if class_str.is_a? Class
-      class_str = class_str.to_s
-      class_name_meth = (params && params[:as] && params[:as].to_s) || (class_str.underscore << '_class')
-      class_ivar_name = class_name_meth.gsub(/\//,'__')
-      class_name_meth = class_name_meth.to_sym
+    def run_setup
+      if @_deferred_class_setup
+        @_deferred_class_setup.each{ |c| Proc===c ? c.call : send(c) }
+        @_deferred_class_setup = nil
+      end
+    end
+    def run_extends
+      if @_deferred_extends
+        @_deferred_extends.each{ |m| extend send(m) unless singleton_class.include? send(m) }
+        @_deferred_extends = nil
+      end
+    end
+
+    def depends_on_constant(const_arg, params={}, suffix = '')
+      if const_arg.is_a?(Class) || const_arg.is_a?(Module)
+        raise(ArgumentError, 'First parameter must not be an actual Class or Module')
+      end
+      as = params && params[:as]
+      if const_arg.is_a? Proc
+        raise(ArgumentError, 'Must provide an as: parameter if the first arg is a Proc') unless as
+      else
+        const_arg = const_arg.to_s
+        underscored = const_arg.underscore.gsub(/\//,'__')
+      end
+      class_ivar_name = as || underscored
+      class_name_meth = (as && as.to_sym) || (underscored + suffix).to_sym
       define_singleton_method(class_name_meth) do
         if (klass = instance_variable_get("@#{class_ivar_name}".to_sym))
           klass
         else
           instance_variable_set("@#{class_ivar_name}".to_sym, begin
-            # handle namespacing
-            namespaced = class_str.split('::')
-            namespaced.inject(Module){|m,c| m.const_get(c) }
+            case const_arg
+            when Proc
+              const_arg.call
+            else
+              # handle namespacing
+              namespaced = const_arg.split('::')
+              namespaced.inject(Module){|m,c| m.const_get(c) }
+            end
           end)
         end
       end
       define_method(class_name_meth) do
         self.class.send(class_name_meth)
       end
+    end
+    def depends_on_constants(*args)
+      args = args.flatten
+      if (h=args.first).is_a? Hash
+        h.each do |k,v|
+          depends_on_constant k, as: v
+        end
+      else
+        args.each do |c|
+          depends_on_constant c
+        end
+      end
+    end
+    def depends_on_class(const_arg, params={})
+      depends_on_constant(const_arg, params, '_class')
+    end
+    def depends_on_module(const_arg, params={})
+      depends_on_constant(const_arg, params, '_module')
     end
     def depends_on_classes(*args)
       args = args.flatten
@@ -39,14 +102,26 @@ module AbstractClassDependency
         end
       end
     end
+    def depends_on_modules(*args)
+      args = args.flatten
+      if (h=args.first).is_a? Hash
+        h.each do |k,v|
+          depends_on_module k, as: v
+        end
+      else
+        args.each do |c|
+          depends_on_module c
+        end
+      end
+    end
 
     def autoinclude(*module_strs)
-      raise(ArgumentError, 'Argument(s) must not be an actual Module') if module_strs.any?{|m| m.is_a? Module}
+      raise(ArgumentError, 'Argument(s) must not be an actual Module. Try symbolizing it as :Module_name') if module_strs.any?{|m| m.is_a? Module}
       module_strs = module_strs.flatten.map(&:to_s)
       @autoincluded_modules ||= []
       @autoincluded_modules |= module_strs.dup
       self.class_eval do
-        unless methods.include?(:method_missing_without_dynamic_include)
+        unless methods(false).include?(:method_missing_without_dynamic_include)
           alias method_missing_without_dynamic_include method_missing
           def method_missing_with_dynamic_include(*args)
             klass = self.class
@@ -69,13 +144,13 @@ module AbstractClassDependency
     end
 
     def autoextend(*module_strs)
-      raise(ArgumentError, 'Argument(s) must not be an actual Module') if module_strs.any?{|m| m.is_a? Module}
+      raise(ArgumentError, 'Argument(s) must not be an actual Module. Try symbolizing it as :Module_name') if module_strs.any?{|m| m.is_a? Module}
       module_strs = module_strs.flatten.map(&:to_s)
       @autoextended_modules ||= []
       @autoextended_modules |= module_strs.dup
       cycle_module_strs = module_strs.dup
       self.singleton_class.class_eval do
-        unless methods.include?(:method_missing_without_dynamic_extend)
+        unless methods(false).include?(:method_missing_without_dynamic_extend)
           alias method_missing_without_dynamic_extend method_missing
           def method_missing_with_dynamic_extend(*args)
             klass = self
@@ -94,6 +169,33 @@ module AbstractClassDependency
           end
           alias method_missing method_missing_with_dynamic_extend
         end
+      end
+    end #autoextend
+
+    def include_deferred(*args, &block)
+      @_deferred_includes ||= []
+      if block_given?
+        @_deferred_includes << block
+      else
+        @_deferred_includes.push(*args)
+      end
+    end
+
+    def extend_deferred(*args, &block)
+      @_deferred_extends ||= []
+      if block_given?
+        @_deferred_extends << block
+      else
+        @_deferred_extends.push(*args)
+      end
+    end
+
+    def setup_class(*args, &block)
+      @_deferred_class_setup ||= []
+      if block_given?
+        @_deferred_class_setup << block
+      else
+        @_deferred_class_setup.push(*args)
       end
     end
   end
@@ -138,10 +240,13 @@ if __FILE__==$PROGRAM_NAME
     def self.check_c
       see_klass.ho
     end
+    def self.another_mod
+      DeferredMethods
+    end
   end
   class D
     include AbstractClassDependency
-    depends_on_classes B: :b_class, C: :see_class
+    depends_on_constants B: :b_class, C: :see_class
     def check_b
       b_class.hi
     end
@@ -167,7 +272,7 @@ if __FILE__==$PROGRAM_NAME
       yo_mtv.raps
     end
     def self.check_run
-      send('yo/mtv_class').raps
+      send(:yo__mtv_class).raps
     end
   end
   class G
@@ -178,29 +283,47 @@ if __FILE__==$PROGRAM_NAME
     include AbstractClassDependency
     autoextend :DeferredMethods
   end
+  class I
+    include AbstractClassDependency
+    depends_on_module ->{ A.another_mod }, as: :a_another_mod
+    depends_on_module :DeferredMethods
+  end
+  class J
+    include AbstractClassDependency
+    setup_class { code_to_exec }
+  end
 
   require 'test/unit'
+  require 'mocha'
   class TestAbstractDependency < Test::Unit::TestCase
-    def test_depends_on_class
+    def test_depends_on_constant
       assert_equal 'hi', A.check_b
       assert_equal 'hi', A.new.check_b
     end
-    def test_depends_on_class_with_good_parameters
+    def test_depends_on_constant_with_good_parameters
       assert_equal 'ho', A.check_c
       assert_equal 'ho', A.new.check_c
     end
-    def test_depends_on_class_with_bad_first_parameter
-      assert_raise(ArgumentError){ A.depends_on_class C }
+    def test_depends_on_constant_with_bad_first_parameter
+      assert_raise(ArgumentError){ A.depends_on_constant C }
     end
-    def test_depends_on_classes
+    def test_depends_on_constants
       assert_equal 'hi', D.new.check_b
       assert_equal 'ho', D.check_c
       assert_equal 'hi', E.new.check_b
       assert_equal 'ho', E.check_c
     end
-    def test_depends_on_namespaced_classes
+    def test_depends_on_namespaced_constants
       assert_equal 'Run DMC', F.check_run_named
       assert_equal 'Run DMC', F.check_run
+    end
+    def test_with_proc
+      assert_equal DeferredMethods, I.a_another_mod
+      assert_equal DeferredMethods, I.new.a_another_mod
+    end
+    def test_with_module
+      assert_equal DeferredMethods, I.deferred_methods_module
+      assert_equal DeferredMethods, I.new.deferred_methods_module
     end
     def test_autoinclude
       assert_nothing_raised { G.new.git }
@@ -211,6 +334,12 @@ if __FILE__==$PROGRAM_NAME
       assert_nothing_raised { H.git }
       assert_equal 'some', H.git
       assert_raise(NoMethodError){ H.new.git }
+    end
+    def test_for_calling_class_setup_only_once
+      J.expects(:code_to_exec).once
+      J.new
+      J.expects(:code_to_exec).never
+      J.new
     end
   end
 end

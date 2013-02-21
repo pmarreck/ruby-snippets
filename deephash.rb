@@ -4,7 +4,7 @@
 
 class Deephash < Hash
   def initialize
-    super { |hash, key| hash[key] = Hash.new(&hash.default_proc) }
+    super { |hash, key| hash[key] = self.class.new(&hash.default_proc) }
   end
 end
 

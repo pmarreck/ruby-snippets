@@ -1,4 +1,3 @@
-a=5
 ########## inline tests
 if __FILE__==$PROGRAM_NAME
   require 'test/unit'

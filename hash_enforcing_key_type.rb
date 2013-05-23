@@ -1,62 +1,72 @@
 class HashEnforcingKeyType < Hash
   BadKeyClassError = Class.new(StandardError)
+  KEY_CLASS_EXTRACTOR = /^HashEnforcing([A-Z][A-Za-z]+)Keys$/
   def initialize(*args)
-    raise BadKeyClassError, "bad key class: #{args.last}" unless args.last.is_a?(Class)
-    @type = args.last
-    super(*(args[0..-1]))
+    if args.last.is_a?(Class)
+      @type = args.pop
+    else
+      begin
+        expected_classname = self.class.to_s.match(KEY_CLASS_EXTRACTOR)[1]
+        @type = self.class.const_get(expected_classname)
+      rescue => e
+        e.message << "\n(It's possible that '#{expected_classname}' is not actually an available class here.)"
+        raise e
+      end
+    end
+    # raise BadKeyClassError, "bad key class: #{args.last}" unless args.last.is_a?(Class)
+    super(*args)
   end
   def self.[](*args)
     a = args.flatten
-    # note: dependency on expected class being embedded in name of subclasses
-    expected_class = const_get(self.to_s.match(/HashEnforcing([A-Z][a-z]+)Keys/)[1])
-    raise BadKeyClassError, "bad key class: #{a.first} is a #{a.first.class} and not a #{expected_class}" unless a.first.is_a?(expected_class)
+    expected_class = const_get(self.to_s.match(KEY_CLASS_EXTRACTOR)[1])
+    a = a.first if Hash===a.first && a.length=1
+    valid = case a
+      when Array
+        a.each_with_index.all?{ |k, i| i.odd? || expected_class===k }
+      when Hash
+        a.each_pair.all?{ |k, v| expected_class===k }
+      end
+    raise BadKeyClassError, "bad key class: #{a} contains keys that are not a #{expected_class}" unless valid
     super
   end
   def [](k, klass = @type)
-    if k.is_a?(klass)
+    if klass===k
       super(k)
     else
-      raise BadKeyClassError, "key must be a #{klass}"
+      raise BadKeyClassError, "requested key '#{k}' must be a #{klass}"
     end
   end
   def []=(k, v, klass = @type)
-    if k.is_a?(klass)
+    if klass===k
       super(k, v)
     else
-      raise BadKeyClassError, "key must be a #{klass}"
+      raise BadKeyClassError, "key '#{k}' must be a #{klass}"
     end
   end
+  alias store []=
   def merge(*args)
     o = args.first
     o.keys.each{|k| raise(BadKeyClassError, "key '#{k}' must be a #{@type}") unless k.is_a?(@type)}
     super
   end
   alias merge! merge
+  def to_h
+    Hash[self]
+  end
 end
 
 
 class HashEnforcingSymbolKeys < HashEnforcingKeyType
-  def initialize(*args)
-    super(*(args << Symbol))
-  end
-  def [](k)
-    super(k, Symbol)
-  end
-  def []=(k,v)
-    super(k, v, Symbol)
-  end
 end
 
 class HashEnforcingStringKeys < HashEnforcingKeyType
-  def initialize(*args)
-    super(*(args << String))
-  end
-  def [](k)
-    super(k, String)
-  end
-  def []=(k, v)
-    super(k ,v, String)
-  end
+end
+
+class HashEnforcingBogusKeys < HashEnforcingKeyType
+end
+
+# i like to get tricky...
+class HashEnforcingHashEnforcingSymbolKeysKeys < HashEnforcingKeyType
 end
 
 ########## inline tests
@@ -118,6 +128,24 @@ if __FILE__==$PROGRAM_NAME
     end
     def test_symbol_enforcement_raises_using_direct_initialization
       assert_raise(HashEnforcingKeyType::BadKeyClassError){ HashEnforcingSymbolKeys['a', 5]}
+    end
+    def test_to_h
+      assert_equal Hash, @h_with_sym.to_h.class
+    end
+    def test_store
+      h = HashEnforcingSymbolKeys.new
+      h.store(:a, 5)
+      assert_equal 5, h[:a]
+      assert_raise(HashEnforcingKeyType::BadKeyClassError){ h.store('b', 5) }
+    end
+    def test_arbitrary_class_enforcement_with_nonexistent_class
+      assert_raise(NameError){ HashEnforcingBogusKeys.new }
+    end
+    def test_arbitrary_class_enforcement
+      h = HashEnforcingHashEnforcingSymbolKeysKeys.new
+      j = HashEnforcingSymbolKeys.new
+      j[:a]=5
+      assert_nothing_raised{ h[j]=6 }
     end
   end
 end

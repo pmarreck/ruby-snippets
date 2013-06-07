@@ -78,12 +78,7 @@ module ResourceConsumptionProfiler
     end
 
     ObjectSpace.each_object do |o|
-      object_snapshot[o.class] ||= begin
-        a = []
-        heisenbergs.add a.object_id
-        a
-      end
-      object_snapshot[o.class] << o.object_id unless (Array===o || Hash===o) && heisenbergs.include?(o.object_id)
+      track_object_by_class(o, heisenbergs, object_snapshot)
     end
 
     osco_pre = {}
@@ -117,14 +112,7 @@ module ResourceConsumptionProfiler
     heisenbergs.add object_snapshot_post[Symbol].object_id
     heisenbergs.add sym_ary.object_id
     ObjectSpace.each_object do |o|
-      klass = o.class
-      heisenbergs.add klass.object_id
-      object_snapshot_post[klass] ||= begin
-        a = []
-        heisenbergs.add a.object_id
-        a
-      end
-      object_snapshot_post[klass] << o.object_id unless (Time===o || Array===o || Hash===o) && heisenbergs.include?(o.object_id)
+      track_object_by_class(o, heisenbergs, object_snapshot_post)
     end
 
     if params[:benchmark]
@@ -162,7 +150,7 @@ module ResourceConsumptionProfiler
       rescue RangeError # it's been recycled
         nil
       end
-      if klass_diff.size > 0 && first_obj && first_obj.respond_to?(:size)
+      if klass_diff.length > 0 && first_obj && first_obj.respond_to?(:length)
         size_extra[klass] = klass_diff.map do |oid|
             begin
               ObjectSpace._id2ref(oid)
@@ -172,9 +160,13 @@ module ResourceConsumptionProfiler
           end.compact.inject(0) do |s, o|
           begin
             # Sometimes, certain objects of this class still won't respond_to size, weirdly...
-            o.respond_to?(:size) ? (s + o.size) : s
+            o.respond_to?(:length) ? (s + o.length) : s
           rescue IOError # sigh, enumerables respond to .size but IO enumerables raise if closed
             o.closed? ? s : raise
+          rescue TypeError
+            s
+          rescue Mysql2::Error => e
+            puts e.message << "\nWARNING: You should exclude class '#{o.class rescue '<error>'}' of object #{o} from the size estimation."
           end
         end
       end
@@ -191,6 +183,46 @@ module ResourceConsumptionProfiler
     out
   end
   alias wtf profile_resource_consumption
+
+  private
+  LOOKS_LIKE_A_CLASS = /^[A-Z][A-Za-z0-9:_]+$/
+  def determine_class(o, heisenbergs)
+    begin
+      if o.respond_to?(:class)
+        # only match "normal-looking" classes. There's some weird responses to this out there...
+        klass = o.class
+        heisenbergs.add klass.object_id
+        klass_to_s = o.class.to_s
+        heisenbergs.add klass_to_s.object_id
+        if (r = (klass_to_s.match LOOKS_LIKE_A_CLASS))
+          heisenbergs.add r.object_id unless Fixnum===r
+          klass
+        else
+          # puts "WARNING: #{o.class} did not look like a normal .class response (ignoring)"
+          nil
+        end
+      else
+        # puts "WARNING: Object #{o} did not respond to .class !"
+      end
+    rescue# => e
+      # puts e.message << "\nWARNING: Object #{o} did not even respond to :respond_to? ... too weird (ignoring)"
+    end
+  end
+  def track_object_by_class(o, heisenbergs, object_snapshot)
+    oclass = determine_class(o, heisenbergs)
+    heisenbergs.add oclass.object_id
+    if oclass
+      object_snapshot[oclass] = (a = []) unless object_snapshot[oclass]
+      heisenbergs.add a.object_id if a
+      begin
+        object_snapshot[oclass] << o.object_id unless (Time===o || Array===o || Hash===o) && heisenbergs.include?(o.object_id)
+      rescue# => e
+        # puts e.message << "\nWARNING: raised an error on adding object snapshot for object of class #{oclass}. This sometimes happens with weird objects that override :== like FactoryGirl::Declaration::Implicit. (ignoring)"
+      end
+    else
+      # puts "WARNING: Object #{o} did not have a .class, so not tracking it..."
+    end
+  end
 end
 
 ########## inline tests

@@ -5,7 +5,8 @@ class BaseN
     btc_base58: "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz",
     base64: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
     binary: "01",
-    base_typable: '0123456789`-=~!@#$%^&*()_+qwertyuiop[]QWERTYUIOP{}|asdfghjkl;ASDFGHJKL:zxcvbnm,./ZXCVBNM<>? '
+    base_typable: '0123456789`-=~!@#$%^&*()_+qwertyuiop[]QWERTYUIOP{}|asdfghjkl;ASDFGHJKL:zxcvbnm,./ZXCVBNM<>? ',
+    base_alphabet: ('a'..'z').to_a.join
   }
   BASES = Hash[SYMBOLS.map{|b,c| [b,c.length]}]
 
@@ -65,6 +66,7 @@ end
 ########## inline tests
 if __FILE__==$PROGRAM_NAME
   require 'test/unit'
+  require 'timeout'
   class BaseNTest < Test::Unit::TestCase
     def crazy_int
       247632993600860153780286963614333301547382186116
@@ -86,6 +88,12 @@ if __FILE__==$PROGRAM_NAME
     end
     def test_character_set_with_dupes
       assert_raise(RuntimeError){ BaseN.encode('aa', 1) }
+    end
+    def test_unary_encoding_works_and_doesnt_hang
+      # this currently fails. pending...
+      assert_nothing_raised do
+        Timeout::timeout(1) { assert_equal '11111', BaseN.encode('1', 5) }
+      end
     end
   end
 end

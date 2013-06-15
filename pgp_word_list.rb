@@ -272,7 +272,7 @@ def convert_to_pgp_words(hex_string = '')
 end
 
 def convert_from_pgp_words(pgp_words = '')
-  words = pgp_words.split(/\s+/)
+  words = (Array===pgp_words ? pgp_words : pgp_words.split(/\s+/))
   to_hex = words.map(&:downcase).map.with_index{ |word, i| PGP_WORDS[i % 2][word] }
   if (loc=to_hex.index(nil))
     raise StandardError, "Decoding error: missing a word after '#{words[loc-1]}'"
@@ -301,6 +301,12 @@ if __FILE__==$PROGRAM_NAME
 
     def test_pgp_wordlist_decoding_omission_error
       assert_raise(StandardError){ convert_from_pgp_words('topmost istanbul vagabond')}
+    end
+
+    def test_pgp_wordlist_circular_calls
+      assert_equal 'abcde12345', convert_from_pgp_words(convert_to_pgp_words('abcde12345'))
+      assert_equal %w[ stopwatch whimsical cowbell bottomless ], convert_to_pgp_words(convert_from_pgp_words('stopwatch whimsical cowbell bottomless'))
+      assert_equal %w[ stopwatch whimsical cowbell bottomless ], convert_to_pgp_words(convert_from_pgp_words(%w[ stopwatch whimsical cowbell bottomless ]))
     end
   end
 end

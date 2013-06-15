@@ -13,6 +13,10 @@ class WrappedValue < Object
   def method_missing(*args, &block)
     @_.__send__(*args, &block) # generic implementations should use __send__, not send
   end
+
+  def respond_to?(m)
+    @_.respond_to?(m) || m==:_
+  end
 end
 
 class ExtraAttributes < WrappedValue

@@ -5,6 +5,7 @@ class BaseN
     btc_base58: "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz",
     base64: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
     binary: "01",
+    base16: "0123456789abcdef",
     base_typable: '0123456789`-=~!@#$%^&*()_+qwertyuiop[]QWERTYUIOP{}|asdfghjkl;ASDFGHJKL:zxcvbnm,./ZXCVBNM<>? ',
     base_alphabet: ('a'..'z').to_a.join
   }
@@ -88,6 +89,9 @@ if __FILE__==$PROGRAM_NAME
     end
     def test_character_set_with_dupes
       assert_raise(RuntimeError){ BaseN.encode('aa', 1) }
+    end
+    def test_btc_public_key_coding
+      assert_equal "44f4614c7007a737c5bd68a293d8954274b11e8cea25e2e8", BaseN.encode(:base16, BaseN.decode(:btc_base58, '17HbhsSJDAaZsxDcwvBo9NfH8TvHHV2ksZ'))
     end
     def test_unary_encoding_works_and_doesnt_hang
       # this currently fails. pending...

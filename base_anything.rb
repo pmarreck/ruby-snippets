@@ -1,15 +1,281 @@
 class BaseN
 
+  PGP_EVEN_WORDS = []
+  PGP_ODD_WORDS = []
+  PGP_WORDS = [PGP_EVEN_WORDS, PGP_ODD_WORDS]
+  %w[
+    aardvark adroitness
+    absurd adviser
+    accrue aftermath
+    acme aggregate
+    adrift alkali
+    adult almighty
+    afflict amulet
+    ahead amusement
+    aimless antenna
+    Algol applicant
+    allow Apollo
+    alone armistice
+    ammo article
+    ancient asteroid
+    apple Atlantic
+    artist atmosphere
+    assume autopsy
+    Athens Babylon
+    atlas backwater
+    Aztec barbecue
+    baboon belowground
+    backfield bifocals
+    backward bodyguard
+    banjo bookseller
+    beaming borderline
+    bedlamp bottomless
+    beehive Bradbury
+    beeswax bravado
+    befriend Brazilian
+    Belfast breakaway
+    berserk Burlington
+    billiard businessman
+    bison butterfat
+    blackjack Camelot
+    blockade candidate
+    blowtorch cannonball
+    bluebird Capricorn
+    bombast caravan
+    bookshelf caretaker
+    brackish celebrate
+    breadline cellulose
+    breakup certify
+    brickyard chambermaid
+    briefcase Cherokee
+    Burbank Chicago
+    button clergyman
+    buzzard coherence
+    cement combustion
+    chairlift commando
+    chatter company
+    checkup component
+    chisel concurrent
+    choking confidence
+    chopper conformist
+    Christmas congregate
+    clamshell consensus
+    classic consulting
+    classroom corporate
+    cleanup corrosion
+    clockwork councilman
+    cobra crossover
+    commence crucifix
+    concert cumbersome
+    cowbell customer
+    crackdown Dakota
+    cranky decadence
+    crowfoot December
+    crucial decimal
+    crumpled designing
+    crusade detector
+    cubic detergent
+    dashboard determine
+    deadbolt dictator
+    deckhand dinosaur
+    dogsled direction
+    dragnet disable
+    drainage disbelief
+    dreadful disruptive
+    drifter distortion
+    dropper document
+    drumbeat embezzle
+    drunken enchanting
+    Dupont enrollment
+    dwelling enterprise
+    eating equation
+    edict equipment
+    egghead escapade
+    eightball Eskimo
+    endorse everyday
+    endow examine
+    enlist existence
+    erase exodus
+    escape fascinate
+    exceed filament
+    eyeglass finicky
+    eyetooth forever
+    facial fortitude
+    fallout frequency
+    flagpole gadgetry
+    flatfoot Galveston
+    flytrap getaway
+    fracture glossary
+    framework gossamer
+    freedom graduate
+    frighten gravity
+    gazelle guitarist
+    Geiger hamburger
+    glitter Hamilton
+    glucose handiwork
+    goggles hazardous
+    goldfish headwaters
+    gremlin hemisphere
+    guidance hesitate
+    hamlet hideaway
+    highchair holiness
+    hockey hurricane
+    indoors hydraulic
+    indulge impartial
+    inverse impetus
+    involve inception
+    island indigo
+    jawbone inertia
+    keyboard infancy
+    kickoff inferno
+    kiwi informant
+    klaxon insincere
+    locale insurgent
+    lockup integrate
+    merit intention
+    minnow inventive
+    miser Istanbul
+    Mohawk Jamaica
+    mural Jupiter
+    music leprosy
+    necklace letterhead
+    Neptune liberty
+    newborn maritime
+    nightbird matchmaker
+    Oakland maverick
+    obtuse Medusa
+    offload megaton
+    optic microscope
+    orca microwave
+    payday midsummer
+    peachy millionaire
+    pheasant miracle
+    physique misnomer
+    playhouse molasses
+    Pluto molecule
+    preclude Montana
+    prefer monument
+    preshrunk mosquito
+    printer narrative
+    prowler nebula
+    pupil newsletter
+    puppy Norwegian
+    python October
+    quadrant Ohio
+    quiver onlooker
+    quota opulent
+    ragtime Orlando
+    ratchet outfielder
+    rebirth Pacific
+    reform pandemic
+    regain Pandora
+    reindeer paperweight
+    rematch paragon
+    repay paragraph
+    retouch paramount
+    revenge passenger
+    reward pedigree
+    rhythm Pegasus
+    ribcage penetrate
+    ringbolt perceptive
+    robust performance
+    rocker pharmacy
+    ruffled phonetic
+    sailboat photograph
+    sawdust pioneer
+    scallion pocketful
+    scenic politeness
+    scorecard positive
+    Scotland potato
+    seabird processor
+    select provincial
+    sentence proximate
+    shadow puberty
+    shamrock publisher
+    showgirl pyramid
+    skullcap quantity
+    skydive racketeer
+    slingshot rebellion
+    slowdown recipe
+    snapline recover
+    snapshot repellent
+    snowcap replica
+    snowslide reproduce
+    solo resistor
+    southward responsive
+    soybean retraction
+    spaniel retrieval
+    spearhead retrospect
+    spellbind revenue
+    spheroid revival
+    spigot revolver
+    spindle sandalwood
+    spyglass sardonic
+    stagehand Saturday
+    stagnate savagery
+    stairway scavenger
+    standard sensation
+    stapler sociable
+    steamship souvenir
+    sterling specialist
+    stockman speculate
+    stopwatch stethoscope
+    stormy stupendous
+    sugar supportive
+    surmount surrender
+    suspense suspicious
+    sweatband sympathy
+    swelter tambourine
+    tactics telephone
+    talon therapist
+    tapeworm tobacco
+    tempest tolerance
+    tiger tomorrow
+    tissue torpedo
+    tonic tradition
+    topmost travesty
+    tracker trombonist
+    transit truncated
+    trauma typewriter
+    treadmill ultimate
+    Trojan undaunted
+    trouble underfoot
+    tumor unicorn
+    tunnel unify
+    tycoon universe
+    uncut unravel
+    unearth upcoming
+    unwind vacancy
+    uproot vagabond
+    upset vertigo
+    upshot Virginia
+    vapor visitor
+    village vocalist
+    virus voyager
+    Vulcan warranty
+    waffle Waterloo
+    wallet whimsical
+    watchword Wichita
+    wayside Wilmington
+    willow Wyoming
+    woodlark yesteryear
+    Zulu Yucatan
+  ].each_slice(2) do |evn, odd|
+    PGP_EVEN_WORDS << evn
+    PGP_ODD_WORDS << odd
+  end
+
   SYMBOLS = {
-    base58: "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ",
-    btc_base58: "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz",
-    base64: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
-    binary: "01",
-    base16: "0123456789abcdef",
-    base_typable: '0123456789`-=~!@#$%^&*()_+qwertyuiop[]QWERTYUIOP{}|asdfghjkl;ASDFGHJKL:zxcvbnm,./ZXCVBNM<>? ',
-    base_alphabet: ('a'..'z').to_a.join
+    base58: "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".split(//),
+    btc_base58: "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".split(//),
+    base64: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".split(//),
+    binary: "01".split(//),
+    base16: "0123456789abcdef".split(//),
+    base_typable: '0123456789`-=~!@#$%^&*()_+qwertyuiop[]QWERTYUIOP{}|asdfghjkl;ASDFGHJKL:zxcvbnm,./ZXCVBNM<>? '.split(//),
+    base_alphabet: ('a'..'z').to_a,
+    pgp_words: PGP_WORDS # http://en.wikipedia.org/wiki/PGP_word_list
   }
-  BASES = Hash[SYMBOLS.map{|b,c| [b,c.length]}]
+  BASES = Hash[SYMBOLS.map{|b,c| [b, Array===c[0] ? c[0].length : c.length]}]
 
   # Ensures a custom character set has unique values.
   class << self
@@ -21,21 +287,44 @@ class BaseN
     private :ensure_uniques
   end
 
-  # Converts a base58 string to a base10 integer.
+  # Converts a baseN string to a base10 integer.
   def self.base_to_int(base, base_val)
+    base_val = base_val.split(//) unless Array===base_val
     if SYMBOLS[base]
       base_len = BASES[base]
       base = SYMBOLS[base]
-    else
-      ensure_uniques(base)
+    elsif base.respond_to?(:length)
+      rotating_symbol_map = (Array===base[0])
+      if rotating_symbol_map
+        base.each{|b| ensure_uniques(b)}
+        raise "Rotating sets of symbols need to all be the same length" unless base.map(&:length).uniq.length != 1
+        base_len = base[0].length
+      else
+        ensure_uniques(base)
+        base_len = base.length
+      end
+    elsif !base
+      # use an implicit character set
+      implicit_base = true
+      base = base_val.inject({}){|h, c| h[c]=true; h}.keys
       base_len = base.length
     end
-    int_val = 0
-    base_val.reverse.split(//).each_with_index do |char,index|
-      raise ArgumentError, 'Value passed not in specified character set' if (char_index = base.index(char)).nil?
-      int_val += (char_index)*(base_len**(index))
+    rotating_symbol_map = (Array===base[0])
+    return_val = if base_len == 1
+      base_val.length
+    else
+      int_val = 0
+      i = 0
+      this_base = base
+      base_val.reverse.each_with_index do |char,index|
+        i = rotating_symbol_map ? index+1 : index # due to endianness issues...
+        this_base = rotating_symbol_map ? base[i % base.length] : base
+        raise ArgumentError, "Value passed, '#{char}', not in specified character set '#{this_base}'#{' which is a rotating symbol map' if rotating_symbol_map}" if (char_index = this_base.index(char)).nil?
+        int_val += (char_index*(base_len**index))
+      end
+      int_val
     end
-    int_val
+    return (implicit_base ? [base, return_val] : return_val)
   end
 
   # Converts a base10 integer to a baseN string.
@@ -43,18 +332,40 @@ class BaseN
     if SYMBOLS[base]
       base_len = BASES[base]
       base = SYMBOLS[base]
-    else
-      ensure_uniques(base)
+    elsif base.respond_to?(:length)
+      rotating_symbol_map = (Array===base[0])
+      if rotating_symbol_map
+        base.each{|b| ensure_uniques(b)}
+        raise "Rotating sets of symbols need to all be the same length" unless base.map(&:length).uniq.length != 1
+        base_len = base[0].length
+      else
+        ensure_uniques(base)
+        base_len = base.length
+      end
+    elsif !base
+      # use an implicit character set
+      implicit_base = true
+      base = base_val.split(//).inject({}){|h, c| h[c]=true; h}.keys
       base_len = base.length
     end
-    raise ArgumentError, 'Value passed is not an Integer.' unless int_val.is_a?(Integer)
-    base_val = ''
-    while(int_val >= base_len)
-      mod = int_val % base_len
-      base_val = base[mod,1] + base_val
-      int_val = (int_val - mod)/base_len
+    raise ArgumentError, "Value passed, '#{int_val}', is not an Integer." unless int_val.is_a?(Integer)
+    rotating_symbol_map = (Array===base[0])
+    if base_len == 1
+      base[0] * int_val
+    else
+      base_val = ''
+      temp_val = ''
+      inc = rotating_symbol_map ? 1 : 0 # due to endianness issues...
+      while(int_val >= base_len)
+        mod = int_val % base_len
+        temp_val = (rotating_symbol_map ? base[inc % base.length][mod] : base[mod])
+        base_val = (temp_val.length < 2 ? temp_val : "#{temp_val}#{' ' unless base_val==''}") + base_val
+        int_val = (int_val - mod)/base_len
+        inc += 1
+      end
+      temp_val = (rotating_symbol_map ? base[inc % base.length][int_val] : base[int_val])
+      (temp_val.length < 2 ? temp_val : "#{temp_val}#{' ' unless base_val==''}") + base_val # (rotating_symbol_map ? base[inc % base_len][int_val] : base[int_val]) + base_val # base[int_val][0] + base_val
     end
-    base[int_val,1] + base_val
   end
 
   class << self
@@ -94,13 +405,21 @@ if __FILE__==$PROGRAM_NAME
       assert_equal "44f4614c7007a737c5bd68a293d8954274b11e8cea25e2e8", BaseN.encode(:base16, BaseN.decode(:btc_base58, '17HbhsSJDAaZsxDcwvBo9NfH8TvHHV2ksZ'))
     end
     def test_unary_encoding_works_and_doesnt_hang
-      # this currently fails. pending...
       assert_nothing_raised do
         Timeout::timeout(1) { assert_equal '11111', BaseN.encode('1', 5) }
+        Timeout::timeout(1) { assert_equal '11111', BaseN.encode('1', BaseN.decode('1', '11111')) }
       end
+    end
+    def test_pgp_words
+      assert_equal "topmost Istanbul Pluto vagabond treadmill Pacific brackish dictator goldfish Medusa afflict bravado chatter revolver Dupont midsummer stopwatch whimsical cowbell bottomless", BaseN.encode(:pgp_words, 0xE58294F2E9A227486E8B061B31CC528FD7FA3F19)
+      assert_equal 0xE58294F2E9A227486E8B061B31CC528FD7FA3F19, BaseN.decode(:pgp_words, "topmost Istanbul Pluto vagabond treadmill Pacific brackish dictator goldfish Medusa afflict bravado chatter revolver Dupont midsummer stopwatch whimsical cowbell bottomless".split(/ /))
     end
   end
 end
 
 # everything is just a number...
-p BaseN.decode(:base_typable, 'Include a few obvious configs that need to be exposed, will add more once we receive reqs from the agent team')
+# p BaseN.decode(:base_typable, 'Include a few obvious configs that need to be exposed, will add more once we receive reqs from the agent team')
+
+# p BaseN.decode(nil, 'abcdef')[1].to_s(2).length
+
+p BaseN.encode(:pgp_words, BaseN.decode(nil, 'peter')[1])

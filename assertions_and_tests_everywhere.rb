@@ -25,9 +25,9 @@ module Kernel
   end
 end
 
-class Test
+module Test
   TRACK = {}
-  def self.inherited(base)
+  def self.included(base)
     if TRACK[:tests].nil?
       at_exit do
         puts; puts

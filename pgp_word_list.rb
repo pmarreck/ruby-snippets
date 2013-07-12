@@ -338,3 +338,5 @@ end
 # PGPWordList.convert("44f4614c7007a737c5bd68a293d8954274b11e8cea25e2e8").each_slice(4) do |words|
 #   puts words.join(' ')
 # end
+p 0x0100
+p PGPWordList.convert('0100')

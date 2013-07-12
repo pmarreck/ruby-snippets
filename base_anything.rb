@@ -280,7 +280,8 @@ class BaseN
   # Ensures a custom character set has unique values.
   class << self
     def ensure_uniques(charset)
-      if charset.length != charset.split(//).uniq.length
+      charset = charset.split(//) if String===charset
+      if charset.length != charset.uniq.length
         raise "Character set has duplicate characters"
       end
     end
@@ -355,16 +356,15 @@ class BaseN
     else
       base_val = ''
       temp_val = ''
-      inc = rotating_symbol_map ? 1 : 0 # due to endianness issues...
-      while(int_val >= base_len)
+      inc = 0
+      begin
         mod = int_val % base_len
-        temp_val = (rotating_symbol_map ? base[inc % base.length][mod] : base[mod])
+        temp_val = (rotating_symbol_map ? base[(inc+1) % base.length][mod] : base[mod])
         base_val = (temp_val.length < 2 ? temp_val : "#{temp_val}#{' ' unless base_val==''}") + base_val
-        int_val = (int_val - mod)/base_len
+        int_val = (int_val < base_len ? 0 : (int_val - mod)/base_len)
         inc += 1
-      end
-      temp_val = (rotating_symbol_map ? base[inc % base.length][int_val] : base[int_val])
-      (temp_val.length < 2 ? temp_val : "#{temp_val}#{' ' unless base_val==''}") + base_val # (rotating_symbol_map ? base[inc % base_len][int_val] : base[int_val]) + base_val # base[int_val][0] + base_val
+      end until int_val == 0
+      base_val
     end
   end
 
@@ -413,6 +413,9 @@ if __FILE__==$PROGRAM_NAME
     def test_pgp_words
       assert_equal "topmost Istanbul Pluto vagabond treadmill Pacific brackish dictator goldfish Medusa afflict bravado chatter revolver Dupont midsummer stopwatch whimsical cowbell bottomless", BaseN.encode(:pgp_words, 0xE58294F2E9A227486E8B061B31CC528FD7FA3F19)
       assert_equal 0xE58294F2E9A227486E8B061B31CC528FD7FA3F19, BaseN.decode(:pgp_words, "topmost Istanbul Pluto vagabond treadmill Pacific brackish dictator goldfish Medusa afflict bravado chatter revolver Dupont midsummer stopwatch whimsical cowbell bottomless".split(/ /))
+    end
+    def test_circular_implicit_coding
+      assert_equal "PeterMarreck", BaseN.encode(*BaseN.decode(nil, ' PeterMarreck')) # the first character is "0", so is dropped, just like 01000 == 1000 in base10
     end
   end
 end

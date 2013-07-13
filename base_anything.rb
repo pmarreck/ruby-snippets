@@ -266,11 +266,15 @@ class BaseN
   end
 
   SYMBOLS = {
-    base58: "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".split(//),
-    btc_base58: "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".split(//),
-    base64: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/".split(//),
-    binary: "01".split(//),
-    base16: "0123456789abcdef".split(//),
+    base58: "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz".split(//),
+    base58_capitals_last: "123456789abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ".split(//),
+    base64: ('A'..'Z').to_a + ('a'..'z').to_a + ('0'..'9').to_a + "+/".split(//),
+    binary: %w[ 0 1 ],
+    decimal: ('0'..'9').to_a,
+    base16: ('0'..'9').to_a + ('a'..'f').to_a,
+    alphanumeric: ('0'..'9').to_a + ('a'..'z').to_a,
+    alphanumeric_capitals_first: ('0'..'9').to_a + ('A'..'Z').to_a + ('a'..'z').to_a,
+    alphanumeric_capitals_last:  ('0'..'9').to_a + ('a'..'z').to_a + ('A'..'Z').to_a,
     base_typable: '0123456789`-=~!@#$%^&*()_+qwertyuiop[]QWERTYUIOP{}|asdfghjkl;ASDFGHJKL:zxcvbnm,./ZXCVBNM<>? '.split(//),
     base_alphabet: ('a'..'z').to_a,
     pgp_words: PGP_WORDS # http://en.wikipedia.org/wiki/PGP_word_list
@@ -402,7 +406,7 @@ if __FILE__==$PROGRAM_NAME
       assert_raise(RuntimeError){ BaseN.encode('aa', 1) }
     end
     def test_btc_public_key_coding
-      assert_equal "44f4614c7007a737c5bd68a293d8954274b11e8cea25e2e8", BaseN.encode(:base16, BaseN.decode(:btc_base58, '17HbhsSJDAaZsxDcwvBo9NfH8TvHHV2ksZ'))
+      assert_equal "44f4614c7007a737c5bd68a293d8954274b11e8cea25e2e8", BaseN.encode(:base16, BaseN.decode(:base58, '17HbhsSJDAaZsxDcwvBo9NfH8TvHHV2ksZ'))
     end
     def test_unary_encoding_works_and_doesnt_hang
       assert_nothing_raised do
@@ -419,10 +423,3 @@ if __FILE__==$PROGRAM_NAME
     end
   end
 end
-
-# everything is just a number...
-# p BaseN.decode(:base_typable, 'Include a few obvious configs that need to be exposed, will add more once we receive reqs from the agent team')
-
-# p BaseN.decode(nil, 'abcdef')[1].to_s(2).length
-
-p BaseN.encode(:pgp_words, BaseN.decode(nil, 'peter')[1])

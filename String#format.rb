@@ -1,14 +1,3 @@
-class Class
-  def test(*args, &block)
-    @_tests ||= {}
-    if block_given?
-      @_tests[args.first] = block
-    else
-      @_tests.each{ |m, t| puts "Running tests for #{m}"; t.call }
-    end
-  end
-end
-
 class Module
   def subclasses
     classes = []
@@ -18,6 +7,13 @@ class Module
     end
     classes
   end
+  def unit(*args, &block)
+    @_tests ||= {}
+    @_tests[args.first] = block
+  end
+  def test
+    @_tests.each{ |m, t| puts; puts "Running tests for #{self}##{m}"; t.call }
+  end
 end
 
 class String
@@ -26,7 +22,7 @@ class String
     super(self, *(args.flatten))
   end
 
-  test(:format) do
+  unit :format do
     require 'test/unit'
     class StringFormatTest < Test::Unit::TestCase
       def test_string_format

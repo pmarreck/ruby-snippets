@@ -1,18 +1,22 @@
 class Module
-  def subclasses
-    classes = []
-    ObjectSpace.each_object do |klass|
-      next unless Module === klass
-      classes << klass if self > klass
-    end
-    classes
-  end
-  def test(*args, &block)
+  # def subclasses
+  #   classes = []
+  #   ObjectSpace.each_object do |klass|
+  #     next unless Module === klass
+  #     classes << klass if self > klass
+  #   end
+  #   classes
+  # end
+  def unit(*args, &block)
     @_tests ||= {}
-    if block_given?
-      @_tests[args.first] = block
-    else
-      @_tests.each{ |m, t| t.call }
+    @_tests[args.first] = block
+  end
+  def test
+    @_tests.each do |m, t|
+      puts
+      puts "Running tests for #{self}##{m}"
+      Asserts::RESULTS[:start_time] ||= Time.now
+      Runner.new.instance_eval &t
     end
   end
 end
@@ -20,25 +24,18 @@ end
 module Asserts
   AssertionError = Class.new(RuntimeError)
   RESULTS = {}
-  def self.included(base)
-    if RESULTS[:asserts].nil?
-      puts; puts "# Running tests:"; puts
-      RESULTS[:start_time] = Time.now
-      at_exit do
-        puts; puts
-        if RESULTS[:failures].nil? && RESULTS[:errors].nil?
-          puts "Passed"
-        # else
-        #   RESULTS[:failures].each{ |e| puts e } if RESULTS[:failures]
-        #   RESULTS[:errors].each{ |e| puts e } if RESULTS[:errors]
-        end
-        tot_t = Time.now - RESULTS[:start_time]
-        puts
-        puts "Finished tests in #{tot_t}s, #{RESULTS[:asserts].to_f/tot_t} assertions/s."
-        puts
-        puts "#{RESULTS[:asserts] || 0} assertions, #{RESULTS[:successes] || 0} successes, #{RESULTS[:failures] || 0} failures, #{RESULTS[:errors] || 0} errors"
-      end
+  at_exit do
+    if [RESULTS[:failures], RESULTS[:errors]].all?{|r| r.nil? || r.zero?}
+      puts; puts "Passed!"
+    # else
+    #   RESULTS[:failures].each{ |e| puts e } if RESULTS[:failures]
+    #   RESULTS[:errors].each{ |e| puts e } if RESULTS[:errors]
     end
+    tot_t = Time.now - RESULTS[:start_time] rescue 1
+    puts
+    puts "Finished tests in #{tot_t}s, #{RESULTS[:asserts].to_f/tot_t} assertions/s."
+    puts
+    puts "#{RESULTS[:asserts] || 0} assertions, #{RESULTS[:successes] || 0} successes, #{RESULTS[:failures] || 0} failures, #{RESULTS[:errors] || 0} errors"
   end
   def success; RESULTS[:successes]||=0; RESULTS[:successes]+=1; print '.'; true; end
   def failure; RESULTS[:failures]||=0; RESULTS[:failures]+=1; print 'F'; false; end
@@ -54,7 +51,7 @@ module Asserts
   alias assert_not_raised assert_no_raise
   alias assert_nothing_raised assert_no_raise
 
-  test(:assert) do
+  unit :assert do
     require 'stringio'
     orig_successes = RESULTS[:successes] || 0
     orig_failures =  RESULTS[:failures]  || 0
@@ -79,7 +76,18 @@ module Asserts
     RESULTS[:asserts] -= 1
   end
 
-end unless defined?(Asserts)
+end
+
+class Runner
+  include Asserts
+end
+
+require "ostruct"
+class Object
+  def stub(*h)
+    OpenStruct.new(*h)
+  end
+end
 
 class String
 
@@ -87,16 +95,17 @@ class String
     super(self, *(args.flatten))
   end
 
-  test(:format) do
+  unit :format do
+    nub = stub(format: '')
     assert_equal '2.00', '%.2f'.format(2.00001)
     assert_equal '1.00 3.00', '%.2f %.2f'.format([1.004, 3.0023])
     assert_equal '1.00 3.00', '%.2f %.2f'.format(1.004, 3.0023)
+    assert_equal '', nub.format
   end
 end
 
 ########## inline tests
 if __FILE__==$PROGRAM_NAME
-  include Asserts
   Asserts.test
   String.test
 end

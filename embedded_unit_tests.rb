@@ -15,13 +15,13 @@ class Module
     @_tests.each do |m, t|
       puts
       puts "Running tests for #{self}##{m}"
-      Asserts::RESULTS[:start_time] ||= Time.now
+      EmbeddedUnitTests::RESULTS[:start_time] ||= Time.now
       Runner.new.instance_eval &t
     end
   end
 end
 
-module Asserts
+module EmbeddedUnitTests
   AssertionError = Class.new(RuntimeError)
   RESULTS = {}
   at_exit do
@@ -79,7 +79,7 @@ module Asserts
 end
 
 class Runner
-  include Asserts
+  include EmbeddedUnitTests
 end
 
 require "ostruct"
@@ -89,23 +89,5 @@ class Object
   end
 end
 
-class String
-
-  def format(*args)
-    super(self, *(args.flatten))
-  end
-
-  unit :format do
-    nub = stub(format: '')
-    assert_equal '2.00', '%.2f'.format(2.00001)
-    assert_equal '1.00 3.00', '%.2f %.2f'.format([1.004, 3.0023])
-    assert_equal '1.00 3.00', '%.2f %.2f'.format(1.004, 3.0023)
-    assert_equal '', nub.format
-  end
-end
-
 ########## inline tests
-if __FILE__==$PROGRAM_NAME
-  Asserts.test
-  String.test
-end
+EmbeddedUnitTests.test if __FILE__==$PROGRAM_NAME

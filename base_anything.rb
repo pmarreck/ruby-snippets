@@ -375,6 +375,14 @@ class BaseN
   class << self
     alias_method :encode, :int_to_base
     alias_method :decode, :base_to_int
+
+    def bin_to_hex(s)
+      s.unpack('H*').first
+    end
+
+    def hex_to_bin(s)
+      [s].pack('H*')
+    end
   end
 
 end
@@ -420,6 +428,9 @@ if __FILE__==$PROGRAM_NAME
     end
     def test_circular_implicit_coding
       assert_equal "PeterMarreck", BaseN.encode(*BaseN.decode(nil, ' PeterMarreck')) # the first character is "0", so is dropped, just like 01000 == 1000 in base10
+    end
+    def test_bin_to_hex_to_bin
+      assert_equal '5acf456e9a3d', BaseN.bin_to_hex(BaseN.hex_to_bin('5acf456e9a3d'))
     end
   end
 end

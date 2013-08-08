@@ -11,6 +11,34 @@ class Module
     @_tests ||= {}
     @_tests[args.first] = block
   end
+  def defn(*args, &inner_block)
+    meth = args.shift
+    define_method(meth) do |*args|
+      # either run the original code, or the mock
+      # maybe track the caller.length and use mocks if it has increased, otherwise the original?
+      # what context do we store caller.length in? a global one?
+      # computing caller on every method dispatch could get expensive, but if it's only computed in a test context it might not matter much
+      inner_block.call(*args)
+      # ???
+    end
+  end
+  def mock(*args, &block)
+    self.const_set(:Mocks, Class.new) unless defined?(Mocks)
+    meth = args.shift
+    hash = args.shift
+    Mocks.class_eval do
+      define_method(meth) do |*args|
+        val = hash[args]
+        val ||= hash[args.first] if args.length == 1
+        if val
+          val
+        else
+          raise StandardError.new("Method #{meth}'s mock does not have an output defined for input #{args.inspect}")
+        end
+      end
+    end
+  end
+
   def test
     @_tests.each do |m, t|
       puts

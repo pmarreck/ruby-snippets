@@ -15,4 +15,4 @@ end
 foo = nil
 p Maybe(foo).bar.baz + 5
 p NullObject.new || 5
-p Maybe(nil).downcase.strip.tr_s('^a-z0-9', '-')
+p Maybe('ABC').downcase.strip.tr_s('^a-z0-9', '-')

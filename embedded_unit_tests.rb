@@ -8,32 +8,26 @@ class Module
   #   classes
   # end
   def unit(*args, &block)
+    meth, name = args
+    name ||= :default
     @_tests ||= {}
-    @_tests[args.first] = block
-  end
-  def defn(*args, &inner_block)
-    meth = args.shift
-    define_method(meth) do |*args|
-      # either run the original code, or the mock
-      # maybe track the caller.length and use mocks if it has increased, otherwise the original?
-      # what context do we store caller.length in? a global one?
-      # computing caller on every method dispatch could get expensive, but if it's only computed in a test context it might not matter much
-      inner_block.call(*args)
-      # ???
-    end
+    @_tests[meth] ||= []
+    @_tests[meth] << [name, block]
   end
   def mock(*args, &block)
-    self.const_set(:Mocks, Class.new) unless defined?(Mocks)
+    unless self.const_defined?(:Mocks)
+      self.const_set(:Mocks, Module.new)
+    end
     meth = args.shift
     hash = args.shift
-    Mocks.class_eval do
+    self::Mocks.class_eval do
       define_method(meth) do |*args|
         val = hash[args]
         val ||= hash[args.first] if args.length == 1
         if val
           val
         else
-          raise StandardError.new("Method #{meth}'s mock does not have an output defined for input #{args.inspect}")
+          raise StandardError.new("Method #{meth}'s mock does not have an output defined for arguments: #{args.inspect}")
         end
       end
     end
@@ -42,9 +36,45 @@ class Module
   def test
     @_tests.each do |m, t|
       puts
-      puts "Running tests for #{self}##{m}"
-      EmbeddedUnitTests::RESULTS[:start_time] ||= Time.now
-      Runner.new.instance_eval &t
+      puts "Testing #{self}##{m}"
+      if Array===t
+        t.each do |(desc, block)|
+          EmbeddedUnitTests::RESULTS[:start_time] ||= Time.now
+          if block.arity == 1
+            case self
+            when Class
+              klass = Class.new(self)
+            when Module
+              klass = Class.new
+              klass.send(:include, self)
+            else
+              raise "Called 'test' method on unhandled object type"
+            end
+            obj = klass.new # what about initialization arguments?
+            # I hate the following eval of a heredoc, but I can't come up with another way for "m"
+            # to be a reachable variable from within class << obj, which is the only
+            # way I know how to alias methods on object instances.
+            eval <<-PAINFULLY_UGLY_BUT_POSSIBLY_NECESSARY_EVAL
+            class << obj
+              alias_method :_#{m}_original, :#{m}
+            end
+            obj.extend self.const_get(:Mocks)
+            class << obj
+              alias_method :#{m}, :_#{m}_original
+              remove_method :_#{m}_original
+            end
+            PAINFULLY_UGLY_BUT_POSSIBLY_NECESSARY_EVAL
+            # Run the test block in the context of a Runner instance, which understands asserts.
+            # This prevents having to make asserts available everywhere.
+            # #instance_exec is nice because it allows you to pass args to the block,
+            # such as our custom on-the-fly object with all mocks in place (except for
+            # the method under test).
+            Runner.new.instance_exec(obj, &block)
+          else
+            Runner.new.instance_eval &block
+          end
+        end
+      end
     end
   end
 end
@@ -117,5 +147,5 @@ class Object
   end
 end
 
-########## inline tests
+########## inline integrity check
 EmbeddedUnitTests.test if __FILE__==$PROGRAM_NAME

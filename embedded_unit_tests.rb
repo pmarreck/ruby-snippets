@@ -69,9 +69,9 @@ class Module
             # #instance_exec is nice because it allows you to pass args to the block,
             # such as our custom on-the-fly object with all mocks in place (except for
             # the method under test).
-            Runner.new.instance_exec(obj, &block)
+            EmbeddedUnitTests.trap_errors{ Runner.new.instance_exec(obj, &block) }
           else
-            Runner.new.instance_eval &block
+            EmbeddedUnitTests.trap_errors{ Runner.new.instance_eval &block }
           end
         end
       end
@@ -89,11 +89,28 @@ module EmbeddedUnitTests
     #   RESULTS[:failures].each{ |e| puts e } if RESULTS[:failures]
     #   RESULTS[:errors].each{ |e| puts e } if RESULTS[:errors]
     end
+    if RESULTS[:error_objects]
+      RESULTS[:error_objects].each do |e|
+        p e
+      end
+    end
     tot_t = Time.now - RESULTS[:start_time] rescue 1
     puts
     puts "Finished tests in #{tot_t}s, #{RESULTS[:asserts].to_f/tot_t} assertions/s."
     puts
     puts "#{RESULTS[:asserts] || 0} assertions, #{RESULTS[:successes] || 0} successes, #{RESULTS[:failures] || 0} failures, #{RESULTS[:errors] || 0} errors"
+  end
+  def self.trap_errors
+    begin
+      yield
+    rescue AssertionError
+      raise
+    rescue StandardError => e
+      RESULTS[:errors] ||= 0
+      RESULTS[:errors] += 1
+      RESULTS[:error_objects] ||= []
+      RESULTS[:error_objects] << e
+    end
   end
   def success; RESULTS[:successes]||=0; RESULTS[:successes]+=1; print '.'; true; end
   def failure; RESULTS[:failures]||=0; RESULTS[:failures]+=1; print 'F'; false; end

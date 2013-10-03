@@ -25,7 +25,7 @@ class Module
         val = hash[args]
         val ||= hash[args.first] if args.length == 1
         if val
-          val
+          val.respond_to?(:call) ? val.call : val
         else
           raise StandardError.new("Method #{meth}'s mock does not have an output defined for arguments: #{args.inspect}")
         end
@@ -150,6 +150,8 @@ module EmbeddedUnitTests
     RESULTS[:failures] -= 1
     RESULTS[:asserts] -= 1
   end
+
+  mock :assert, true => true, false => ->{ raise }
 
 end
 

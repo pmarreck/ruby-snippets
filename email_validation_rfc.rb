@@ -42,5 +42,5 @@ EMAIL = /
 p "peter@desk.com".scan(EMAIL)
 p EMAIL =~ "peter@desk.com"
 p EMAIL.match("peter@desk.com")
-p EMAIL.match('"peter@nodomain.com" <peter@desk.com>')
+p EMAIL.match('"Peter Marreck" <peter@desk.com>')
 p '"peter@nodomain.com" <peter@desk.com>'.scan EMAIL

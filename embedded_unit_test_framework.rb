@@ -27,6 +27,8 @@ module TestModule
   unit :adderquadrupler, 'assert adderquadrupler works' do |instance|
     assert_equal 24, instance.adderquadrupler(6)
   end
+  # integrity :adderquadrupler, class: Integer, arity: -1
+
 
 end
 

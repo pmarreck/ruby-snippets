@@ -1,0 +1,16 @@
+when you run each test block for a method
+1) allow multiple tests for the same method
+2) mix in the Mocks module which has the mocks for all the methods in this class
+3) traverse ancestors and mix in their Mocks into their own classes
+4) iterate over all methods defined in the current class that are not the method under test and which are mocked, grab them and store them, remove_method them so that their mocks get called instead
+5) run the test
+6) redefine all the original methods that are not the method under test. (maybe do this in an ensure clause in case the test raises?)
+
+seems a little expensive. maybe only make these changes on 1 instance of a class... make a new instance, then replace all its instance methods which are not the method under test and which have mocks, with those mock definitions, on the instance itself.
+How to then test module methods? Might need to Object.new.extend that module and then do the same thing?
+
+You run the test in the context of that object instance (so that "self" in the block, is the instance, for instance methods)
+
+Class methods? A future problem, harder/uglier to change methods on global classes :/ Maybe use a module and test it as module methods, but when they're used in the class the class just extends that module.
+Same with module-class methods...
+So module tests create an Object.new.extend Modulename and instance_eval the test block in that context.

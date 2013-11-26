@@ -105,6 +105,8 @@ class BaseN
     if SYMBOLS[base]
       base_len = BASES[base]
       base = SYMBOLS[base]
+    elsif Symbol===base
+      raise "Base #{base} is not a known symbol set"
     elsif base.respond_to?(:length)
       if String===base
         base = base.split('')
@@ -270,8 +272,18 @@ if __FILE__==$PROGRAM_NAME
     def test_bin_to_hex_to_bin
       assert_equal '5acf456e9a3d', BaseN.bin_to_hex(BaseN.hex_to_bin('5acf456e9a3d'))
     end
-    def test_core_monkeypatch_mode
-      assert_equal "aftermath hamlet graduate", "raybeam".decode(' raybem').encode(:pgp_words)
+    def test_core_monkeypatch_code_through_various_sets
+      pgpwords = "raybeam".decode(' raybem').encode(:pgp_words)
+      assert_equal "aftermath hamlet graduate", pgpwords
+      num = pgpwords.decode(:pgp_words)
+      assert_equal 160103, num
+      assert_equal "raybeam", num.encode(' raybem')
+    end
+    def test_unknown_symbol_set
+      assert_raise(RuntimeError){ 'a'.decode(:boguswtf) }
+    end
+    def test_long_hex_as_pgp
+      assert_equal 'puppy processor involve corporate backward molasses concert borderline artist tradition snapline processor quiver photograph indulge detector apple travesty skullcap component', '9bb7773916933e180fe4c1b79eb175450ee5bd32'.decode(:base16).encode(:pgp_words)
     end
   end
 end

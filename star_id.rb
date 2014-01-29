@@ -15,16 +15,51 @@ class StarId
   attr_reader :datacenter_id, :worker_id, :reporter, :logger, :version
   attr_accessor :sequence, :class_id
 
-  DATACENTER_ID_BITS = 4
-  MAX_DATACENTER_ID = (1 << DATACENTER_ID_BITS) - 1
-  WORKER_ID_BITS = 5
-  MAX_WORKER_ID = (1 << WORKER_ID_BITS) - 1
-  CLASS_ID_BITS = 8
-  MAX_CLASS_ID = (1 << CLASS_ID_BITS) - 1
-  TIMESTAMP_BITS = 32
-
-  SEQUENCE_BITS = 11
   VERSION_ID_BITS = 3
+  VERSIONS = {}
+
+  CURRENT_FORMAT_VERSION = 0
+
+  VERSIONS[0] = {
+    datacenter_id_bits:    (datacenter_id_bits = 4),
+    worker_id_bits:        (worker_id_bits = 5),
+    class_id_bits:         (class_id_bits = 8),
+    timestamp_bits:        (timestamp_bits = 32),
+    sequence_bits:         (sequence_bits = 11),
+    version_id_bits:       (version_id_bits = VERSION_ID_BITS), # should probably never change
+    max_class_id:          (1 << class_id_bits) - 1,
+    max_worker_id:         (1 << worker_id_bits) - 1,
+    max_datacenter_id:     (1 << datacenter_id_bits) - 1,
+    max_version_id:        (1 << version_id_bits) - 1,
+    version_id_shift:      (version_id_shift = 0),
+    sequence_shift:        (sequence_shift = (version_id_shift + version_id_bits)),
+    timestamp_shift:       (timestamp_shift = (sequence_shift + sequence_bits)),
+    class_id_shift:        (class_id_shift = (timestamp_shift + timestamp_bits)),
+    worker_id_shift:       (worker_id_shift = (class_id_shift + class_id_bits)),
+    datacenter_id_shift:   (datacenter_id_shift = (worker_id_shift + worker_id_bits)),
+    version_id_mask:       (((1 << version_id_bits) - 1) << version_id_shift),
+    sequence_base_mask:    (sequence_base_mask = (1 << sequence_bits) - 1),
+    sequence_mask:         sequence_base_mask << sequence_shift,
+    timestamp_mask:        (((1 << timestamp_bits) - 1) << timestamp_shift),
+    class_id_mask:         (((1 << class_id_bits) - 1) << class_id_shift),
+    worker_id_mask:        (((1 << worker_id_bits) - 1) << worker_id_shift),
+    datacenter_id_mask:    (((1 << datacenter_id_bits) - 1) << datacenter_id_shift),
+    datacenter_id_default: 0,
+    worker_id_default:     0,
+    version_id_default:    0
+  }.freeze
+
+
+  DATACENTER_ID_BITS = 4
+  WORKER_ID_BITS = 5
+  CLASS_ID_BITS = 8
+  TIMESTAMP_BITS = 32
+  SEQUENCE_BITS = 11
+
+
+  MAX_CLASS_ID = (1 << CLASS_ID_BITS) - 1
+  MAX_WORKER_ID = (1 << WORKER_ID_BITS) - 1
+  MAX_DATACENTER_ID = (1 << DATACENTER_ID_BITS) - 1
   MAX_VERSION_ID = (1 << VERSION_ID_BITS) - 1
 
   VERSION_ID_SHIFT    = 0

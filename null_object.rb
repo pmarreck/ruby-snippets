@@ -3,7 +3,7 @@ class NullObject
     self
   end
   def initialize
-  	@origin = caller.first
+    @origin = caller.first
   end
   def nil?; true; end
 end

@@ -71,7 +71,7 @@ if __FILE__==$PROGRAM_NAME
       assert_equal '', 0.to_roman_numeral
     end
     def test_420_in_roman
-      assert_equal '', 420.to_roman_numeral
+      assert_equal 'CCCCXX', 420.to_roman_numeral
     end
   end
 end

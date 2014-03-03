@@ -5,10 +5,12 @@ class String
     (ord-1).chr
   end
   def carry!
-puts "called carry! with #{self}"
+    # puts "called carry! with #{self}"
     return self unless self =~ /2/
-# p match(/(.?)(2)/)
-    gsub!(/(.?)(2)/, "#{$1 ? $1.succ : '1'}#{$2 ? $2.prev : 'wtf'}")
+    gsub!(/02/, '10')
+    gsub!(/12/, '20')
+    gsub!(/^2/, '10')
+    # gsub!(/(.?)2/, "#{$1 ? ($1.succ) : '1'}0")
     carry!
   end
 
@@ -18,13 +20,15 @@ puts "called carry! with #{self}"
   end
 end
 
-ADD_1 = /[01]$/
-CARRY = /(.?)(2)/
-
-p '0'.gsub(ADD_1){|c| c.succ }
-p '1'.gsub(ADD_1){|c| c.succ }
-
-p '02'.gsub(CARRY){|c| $1.succ + '0' }
-p '12'.gsub(CARRY){|c| $1.succ + $2.prev }
-
-p '011'.add_1_binary
+if __FILE__==$PROGRAM_NAME
+  require 'test/unit'
+  class RegexMathTest < Test::Unit::TestCase
+    def test_increments
+      assert_equal '100', '011'.add_1_binary
+      assert_equal '101', '100'.add_1_binary
+      assert_equal '110', '101'.add_1_binary
+      assert_equal '111', '110'.add_1_binary
+      assert_equal '1000', '111'.add_1_binary
+    end
+  end
+end

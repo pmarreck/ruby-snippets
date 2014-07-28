@@ -302,6 +302,10 @@ if __FILE__==$PROGRAM_NAME
   end
   class J
     include AbstractClassDependency
+    def self.code_to_exec
+      @code_to_exec_calls ||= 0
+      @code_to_exec_calls =+ 1
+    end
     setup_class { code_to_exec }
   end
 
@@ -348,10 +352,10 @@ if __FILE__==$PROGRAM_NAME
       assert_raise(NoMethodError){ H.new.git }
     end
     def test_for_calling_class_setup_only_once
-      J.expects(:code_to_exec).once
       J.new
-      J.expects(:code_to_exec).never
+      assert_equal 1, J.instance_variable_get(:@code_to_exec_calls)
       J.new
+      assert_equal 1, J.instance_variable_get(:@code_to_exec_calls)
     end
   end
 end

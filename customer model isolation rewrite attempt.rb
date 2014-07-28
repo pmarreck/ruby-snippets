@@ -899,42 +899,45 @@ end
 
 if __FILE__==$PROGRAM_NAME
   require 'test/unit'
-  require 'mocha/setup'
-  require 'shoulda'
   class IndependenceTest < Test::Unit::TestCase
 
-    subject { Customer }
+    module SubjectExtendStubs
+      def acts_as_paranoid(*args); true; end
+      def validate(*args); true; end
+      def before_validation(*args); true; end
+      def before_save(*args); true; end
+      def before_create(*args); true; end
+      def after_save(*args); true; end
+      def belongs_to(*args); true; end
+      def belongs_to_enum(*args); true; end
+      def has_one(*args); true; end
+      def has_many(*args); true; end
+      def scope(*args); true; end
+      def accepts_nested_attributes_for(*args); true; end
+      def elastic_index(*args); true; end
+      def add_method_tracer(*args); true; end
 
-    def stub_macro_methods(o = subject, mm = %w[
-        acts_as_paranoid
-        validate
-        before_validation
-        before_save
-        before_create
-        after_save
-        belongs_to
-        belongs_to_enum
-        has_one
-        has_many
-        scope
-        accepts_nested_attributes_for
-        elastic_index
-        add_method_tracer
-      ])
-      mm.each{ |m| o.stubs(m.to_sym).returns(true) }
+      def run_extends(*args); true; end
     end
 
-    def stub_class_setup(o = subject)
-      o.stubs(:run_setup).returns(true)
+    module SubjectIncludeStubs
+      def run_includes(*args); true; end
+    end
+
+    def subject
+      Customer
+    end
+
+    def stub_macro_methods(o = subject, mm = SubjectExtendStubs)
+      o.extend mm
     end
 
     def stub_module_inclusion_and_extension(o = subject)
-      o.stubs(:run_extends).returns(true)
-      o.any_instance.stubs(:run_includes).returns(true)
+      o.send(:include, SubjectIncludeStubs)
     end
 
     def setup_dependency_removal
-      stub_class_setup
+      # stub_class_setup
       stub_module_inclusion_and_extension
       stub_macro_methods
     end
@@ -945,7 +948,18 @@ if __FILE__==$PROGRAM_NAME
 
     def test_for_independence
       setup_dependency_removal
-      assert subject.new
+      c = subject.new
+      assert c
+      assert_equal Customer, c.class
+      assert_equal [Customer,
+        IndependenceTest::SubjectIncludeStubs,
+        AbstractClassDependency::InstanceMethods,
+        AbstractClassDependency,
+        ActiveRecord::Base,
+        Object,
+        PP::ObjectMixin,
+        Kernel,
+        BasicObject], c.class.ancestors
     end
 
   end

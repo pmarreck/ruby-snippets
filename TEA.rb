@@ -104,16 +104,9 @@ class Crypt
       # for each 8 char's pack them into 2 ints
       range = Range.new(0,cipher_array.length,true)
 
-      range.step(8) do |n|
-        num1  = cipher_array[n].to_i(16)   << 24
-        num1 += cipher_array[n+1].to_i(16) << 16
-        num1 += cipher_array[n+2].to_i(16) << 8
-        num1 += cipher_array[n+3].to_i(16)
-
-        num2  = cipher_array[n+4].to_i(16) << 24
-        num2 += cipher_array[n+5].to_i(16) << 16
-        num2 += cipher_array[n+6].to_i(16) << 8
-        num2 += cipher_array[n+7].to_i(16)
+      while cipher_array.any? do
+        num1 = cipher_array.shift(4).join.to_i(16)
+        num2 = cipher_array.shift(4).join.to_i(16)
 
         enum1,enum2  = decrypt_chunk(num1,num2,key)
 
@@ -132,7 +125,7 @@ class Crypt
       pad_count = plain_text.shift.chr.to_i
       (pad_count - 1).times { |i| plain_text.pop }
 
-      plain_text.collect { |c| c.chr }.join("")
+      plain_text.map(&:chr).join
     end
 
     ############

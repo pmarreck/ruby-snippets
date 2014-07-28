@@ -1,0 +1,13 @@
+http://stackoverflow.com/questions/1250079/bash-escaping-single-quotes-inside-of-single-quoted-strings
+So for the record, the most recommended way to escape single quotes in a single-quoted string argument is to replace it with (I shit you not)
+'"'"'
+(that is single quote, double quote, single quote, double quote, single quote)
+The explanation being that
+1) strings next to each other are concatenated by shell
+2) single quoted strings cannot contain single quotes
+3) but double quoted strings can.
+So basically, you're closing the first singly-quoted string, opening a new doubly-quoted string, emitting the single quote, closing the doubly-quoted string and reopening the singly-quoted string
+lol
+You might also be able to replace it with
+'\''
+TL;DR Just don't use single quotes in text data when testing.

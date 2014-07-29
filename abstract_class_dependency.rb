@@ -214,6 +214,8 @@ module AbstractClassDependency
 end
 
 if __FILE__==$PROGRAM_NAME
+  require 'test/unit'
+  
   class B
     def self.hi
       'hi'
@@ -303,14 +305,15 @@ if __FILE__==$PROGRAM_NAME
   class J
     include AbstractClassDependency
     def self.code_to_exec
-      @code_to_exec_calls ||= 0
-      @code_to_exec_calls =+ 1
+      @runs ||= 0
+      @runs += 1
+    end
+    def self.setup_runs
+      @runs
     end
     setup_class { code_to_exec }
   end
 
-  require 'test/unit'
-  require 'mocha'
   class TestAbstractDependency < Test::Unit::TestCase
     def test_depends_on_constant
       assert_equal 'hi', A.check_b
@@ -352,10 +355,11 @@ if __FILE__==$PROGRAM_NAME
       assert_raise(NoMethodError){ H.new.git }
     end
     def test_for_calling_class_setup_only_once
+      assert_nil J.setup_runs
       J.new
-      assert_equal 1, J.instance_variable_get(:@code_to_exec_calls)
+      assert_equal 1, J.setup_runs
       J.new
-      assert_equal 1, J.instance_variable_get(:@code_to_exec_calls)
+      assert_equal 1, J.setup_runs
     end
   end
 end

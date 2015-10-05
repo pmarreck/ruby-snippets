@@ -14,10 +14,8 @@ p [1,2,3,{a: 'b'}].recursive?
 
 h = {}
 h[0] = h
-p h
 p h.recursive?
 
 a = []
 a << a
-p a
 p a.recursive?

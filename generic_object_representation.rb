@@ -155,6 +155,7 @@ end
 
 ########## inline test running
 if __FILE__==$PROGRAM_NAME
+  require 'test/unit'
   class ObjectUtilsTest < Test::Unit::TestCase
     def setup
       @timenow = Time.now
@@ -182,66 +183,70 @@ if __FILE__==$PROGRAM_NAME
         end
       end
     end
+
     def test_circular_object_reference
       assert_equal :_circ_obj_ref, @representation[:a][:c][:e][:g]
     end
 
-  def test_inspect_without_obj_id
-    assert_nil TestClassWithAtts.inspect_without_obj_id =~ /\:0x[0-9a-f]+/
-  end
+    def test_inspect_without_obj_id
+      assert_nil TestClassWithAtts.inspect_without_obj_id =~ /\:0x[0-9a-f]+/
+    end
 
-  def test_maxdepth_exceeded
-    assert_equal({:a=>{:b=>:_max_depth_exc, :c=>{:d=>:_max_depth_exc}}},
-      @simple_nested_hash.represent(maxdepth: 3))
-  end
+    def test_maxdepth_exceeded
+      assert_equal({:a=>{:b=>:_max_depth_exc, :c=>{:d=>:_max_depth_exc}}},
+        @simple_nested_hash.represent(maxdepth: 3))
+    end
 
-  def test_represent_with_block_filter
-    expected_result = {:a=>{:c=>{:e=>{:f=>"ObjectUtilsTest::TestClassWithAtts"}}}}
-    filter = ->(k,v){ k.to_s.match(/a|c|e|f/) }
-    assert_equal expected_result, @complex_hash_object.represent(prune: filter)
-  end
+    def test_represent_with_block_filter
+      expected_result = {:a=>{:c=>{:e=>{:f=>"ObjectUtilsTest::TestClassWithAtts"}}}}
+      filter = ->(k,v){ k.to_s.match(/a|c|e|f/) }
+      assert_equal expected_result, @complex_hash_object.represent(prune: filter)
+    end
 
-  def test_represent_doesnt_mutate_original_object_whatsoever
-    assert_equal @hash_previous, @complex_hash_object.hash
-  end
+    def test_represent_doesnt_mutate_original_object_whatsoever
+      assert_equal @hash_previous, @complex_hash_object.hash
+    end
 
-  def test_represent_as_json
-    assert_equal("object_utils_test/test_class_with_atts",
-      @complex_hash_object[:a][:b][1].represent(as_json: true).keys.first)
-  end
+    def test_represent_as_json
+      assert_equal("object_utils_test/test_class_with_atts",
+        @complex_hash_object[:a][:b][1].represent(as_json: true).keys.first)
+    end
 
-  def test_represent_with_backreferences
-    expected_result = {
-      :a=>
-        {:b=>
-          [{"IO"=>"#<IO:<STDOUT>>", :_obj_id=>"&id005"},
-           {"ObjectUtilsTest::TestClassWithAtts"=>
-             {"att1"=>"*id005",
-              "att2"=>
-               {"ObjectUtilsTest::TestProc"=>
-                 @complex_hash_object[:a][:b][1].att2.inspect_without_obj_id},
-              "dt"=>@timenow.utc.iso8601}}],
-         :c=>{:d=>5, :e=>{:f=>"ObjectUtilsTest::TestClassWithAtts", :g=>"*id005"}}}}
-    assert_equal(expected_result,
-      @complex_hash_object.represent(include_backreferences: true))
-  end
+    def test_represent_with_backreferences
+      expected_result = {
+        :a=>
+          {:b=>
+            [{"IO"=>"#<IO:<STDOUT>>", :_obj_id=>"&id005"},
+             {"ObjectUtilsTest::TestClassWithAtts"=>
+               {"att1"=>"*id005",
+                "att2"=>
+                 {"ObjectUtilsTest::TestProc"=>
+                   @complex_hash_object[:a][:b][1].att2.inspect_without_obj_id},
+                "dt"=>@timenow.utc.iso8601}}],
+           :c=>{:d=>5, :e=>{:f=>"ObjectUtilsTest::TestClassWithAtts", :g=>"*id005"}}}}
+      assert_equal(expected_result,
+        @complex_hash_object.represent(include_backreferences: true))
+    end
 
-  def test_represent_on_ridiculous_object
-    expected_result = {
-      :a=>
-        {:b=>
-          [{"IO"=>"#<IO:<STDOUT>>"},
-           {"ObjectUtilsTest::TestClassWithAtts"=>
-             {"att1"=>:_circ_obj_ref,
-              "att2"=>
-               {"ObjectUtilsTest::TestProc"=>
-                 @complex_hash_object[:a][:b][1].att2.inspect_without_obj_id},
-              "dt"=>@timenow.utc.iso8601}}],
-         :c=>{:d=>5, :e=>{:f=>"ObjectUtilsTest::TestClassWithAtts", :g=>:_circ_obj_ref}}}}
+    def test_represent_on_ridiculous_object
+      expected_result = {
+        :a=>
+          {:b=>
+            [{"IO"=>"#<IO:<STDOUT>>"},
+             {"ObjectUtilsTest::TestClassWithAtts"=>
+               {"att1"=>:_circ_obj_ref,
+                "att2"=>
+                 {"ObjectUtilsTest::TestProc"=>
+                   @complex_hash_object[:a][:b][1].att2.inspect_without_obj_id},
+                "dt"=>@timenow.utc.iso8601}}],
+           :c=>{:d=>5, :e=>{:f=>"ObjectUtilsTest::TestClassWithAtts", :g=>:_circ_obj_ref}}}}
 
-    assert_equal expected_result, @representation
-  end
+      assert_equal expected_result, @representation
+    end
 
-  def test_represent_with_empty_hash_values
-    assert_equal({"--"=>{}, "++"=>{}}, {'val' => {}}.deep_diff({'val' => {}}))
+    def test_represent_with_empty_hash_values
+      assert_equal({"--"=>{}, "++"=>{}}, {'val' => {}}.deep_diff({'val' => {}}))
+    end
+    
   end
+end

@@ -124,7 +124,7 @@ if __FILE__==$0
       assert_equal 69, a.numericalstring.to_i
       assert_equal 69.0, a.numericalstring.to_f
       # try to accidentally overwrite methods on the delegated object
-      assert_raise NoMethodError do a.encoding = "UTF-8" end
+      assert_raise RuntimeError do a.encoding = "UTF-8" end
       assert_equal "".encoding, a.encoding
 
       a = some_method_returning_loaded_oneliner

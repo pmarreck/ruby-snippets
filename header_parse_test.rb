@@ -1,4 +1,3 @@
-require 'ap'
 require 'mail'
 
 # String monkeypatch
@@ -121,12 +120,13 @@ t = Time.now
     email.call
   end
 end
-puts "Time with my regex: #{Time.now - t} seconds"
+puts "Time with my regex: #{mine = (Time.now - t)} seconds"
 
 t = Time.now
 500.times do
   email = Mail.new(headers)
   email.received
 end
-puts "Time with Mail gem: #{Time.now - t} seconds"
+puts "Time with Mail gem: #{mailgem = (Time.now - t)} seconds"
 
+puts "Factor of improvement: #{(mailgem/mine*10000).to_i.to_f/100}%"
